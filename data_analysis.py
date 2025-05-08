@@ -18,7 +18,7 @@ plt.rcParams['font.size'] = 12
 
 # Load the dataset
 print("\n1. Loading Dataset...")
-df = pd.read_csv('/Users/amartinjak/Downloads/dataset.csv')
+df = pd.read_csv('/Users/user/Downloads/telcodataset.csv')
 
 # Data Preprocessing
 print("\n2. Data Preprocessing...")
