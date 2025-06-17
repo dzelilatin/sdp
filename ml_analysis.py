@@ -46,6 +46,11 @@ def prepare_features(df):
         X_encoded = pd.get_dummies(X)
         print(f"Number of features after encoding: {X_encoded.shape[1]}")
         
+        # Drop low-variance columns
+        low_variance_cols = [col for col in X_encoded.columns if X_encoded[col].nunique() == 1]
+        X_encoded = X_encoded.drop(columns=low_variance_cols)
+        print(f"Number of features after dropping low-variance columns: {X_encoded.shape[1]}")
+        
         # Split the data
         X_train, X_test, y_train, y_test = train_test_split(
             X_encoded, y, test_size=0.2, random_state=42
@@ -69,22 +74,23 @@ def train_models(X_train, X_test, y_train, y_test):
     param_grids = {
         'Logistic Regression': {
             'C': [0.001, 0.01, 0.1, 1, 10, 100],
-            'penalty': ['l1', 'l2']
+            'penalty': ['l2'],  # Removed 'l1' as it's not supported by 'lbfgs'
+            'solver': ['lbfgs']  # Explicitly specify the solver
         },
         'Random Forest': {
-            'n_estimators': [100, 200, 300],
-            'max_depth': [10, 20, 30, None],
-            'min_samples_split': [2, 5, 10]
+            'n_estimators': [100, 200],
+            'max_depth': [10, 20, None],
+            'min_samples_split': [2, 5]
         },
         'XGBoost': {
-            'n_estimators': [100, 200, 300],
-            'max_depth': [3, 5, 7],
-            'learning_rate': [0.01, 0.1, 0.2]
+            'n_estimators': [100, 200],
+            'max_depth': [3, 5],
+            'learning_rate': [0.1]
         },
         'SVM': {
-            'C': [0.1, 1, 10],
-            'kernel': ['rbf', 'linear'],
-            'gamma': ['scale', 'auto']
+            'C': [0.1, 1],
+            'kernel': ['rbf'],
+            'gamma': ['scale']
         }
     }
     
@@ -101,7 +107,7 @@ def train_models(X_train, X_test, y_train, y_test):
     
     # Train and evaluate each model
     for model_name, model in models.items():
-        print(f"\nTraining {model_name}...")
+        print(f"\nTraining {model_name}... This may take some time.")
         start_time = time.time()
         
         try:
@@ -253,6 +259,14 @@ def main():
         
         # Train models
         model_results = train_models(X_train, X_test, y_train, y_test)
+        
+        # Initialize models (this was missing in the original code)
+        models = {
+            'Logistic Regression': LogisticRegression(max_iter=1000),
+            'Random Forest': RandomForestClassifier(random_state=42),
+            'XGBoost': XGBClassifier(random_state=42),
+            'SVM': SVC(probability=True)
+        }
         
         # Create ensemble
         ensemble_accuracy, ensemble_report = create_ensemble(
