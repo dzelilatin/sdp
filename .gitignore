@@ -24,10 +24,6 @@ build/
 # Environment variables
 .env
 
-# Model results and visualizations
-ml_results/
-visualizations/
-
 # OS specific files
 .DS_Store
 Thumbs.db 
