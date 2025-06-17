@@ -8,7 +8,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 from xgboost import XGBClassifier
 from sklearn.svm import SVC
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, precision_score, recall_score
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
@@ -67,7 +67,7 @@ def prepare_features(df):
         raise
 
 def train_models(X_train, X_test, y_train, y_test):
-    """Train and evaluate multiple models."""
+    """Train and evaluate multiple models with detailed metrics."""
     print("\n3. Training and evaluating models...")
     
     # Define parameter grids for each model
@@ -127,12 +127,19 @@ def train_models(X_train, X_test, y_train, y_test):
             
             # Calculate metrics
             accuracy = accuracy_score(y_test, predictions)
+            precision = precision_score(y_test, predictions)
+            recall = recall_score(y_test, predictions)
+            false_positives = sum((predictions == 1) & (y_test == 0))
+            confusion = confusion_matrix(y_test, predictions)
             report = classification_report(y_test, predictions)
             
             # Store results
             model_results[model_name] = {
                 'accuracy': accuracy,
-                'predictions': predictions,
+                'precision': precision,
+                'recall': recall,
+                'false_positives': false_positives,
+                'confusion_matrix': confusion,
                 'best_params': grid_search.best_params_,
                 'report': report
             }
@@ -141,6 +148,9 @@ def train_models(X_train, X_test, y_train, y_test):
             print(f"Best parameters: {grid_search.best_params_}")
             print(f"Best cross-validation score: {grid_search.best_score_:.4f}")
             print(f"Test accuracy: {accuracy:.4f}")
+            print(f"Precision: {precision:.4f}")
+            print(f"Recall: {recall:.4f}")
+            print(f"False Positives: {false_positives}")
             print(f"Training time: {time.time() - start_time:.2f} seconds")
             
         except Exception as e:
@@ -195,18 +205,48 @@ def plot_results(model_results, results_dir):
     print("\n5. Creating performance visualization...")
     
     try:
-        plt.figure(figsize=(12, 6))
-        accuracies = [results['accuracy'] for results in model_results.values()]
+        # Extract metrics for visualization
         model_names = list(model_results.keys())
+        accuracies = [results['accuracy'] for results in model_results.values()]
+        precisions = [results['precision'] for results in model_results.values()]
+        recalls = [results['recall'] for results in model_results.values()]
+        false_positives = [results['false_positives'] for results in model_results.values()]
         
-        plt.bar(model_names, accuracies)
-        plt.xticks(rotation=45)
+        # Create subplots for metrics
+        plt.figure(figsize=(16, 8))
+        
+        # Accuracy plot
+        plt.subplot(2, 2, 1)
+        plt.bar(model_names, accuracies, color='skyblue')
         plt.title('Model Accuracy Comparison')
         plt.ylabel('Accuracy')
-        plt.tight_layout()
+        plt.xticks(rotation=45)
         
+        # Precision plot
+        plt.subplot(2, 2, 2)
+        plt.bar(model_names, precisions, color='lightgreen')
+        plt.title('Model Precision Comparison')
+        plt.ylabel('Precision')
+        plt.xticks(rotation=45)
+        
+        # Recall plot
+        plt.subplot(2, 2, 3)
+        plt.bar(model_names, recalls, color='orange')
+        plt.title('Model Recall Comparison')
+        plt.ylabel('Recall')
+        plt.xticks(rotation=45)
+        
+        # False positives plot
+        plt.subplot(2, 2, 4)
+        plt.bar(model_names, false_positives, color='salmon')
+        plt.title('Model False Positives Comparison')
+        plt.ylabel('False Positives')
+        plt.xticks(rotation=45)
+        
+        plt.tight_layout()
+
         # Save plot
-        plot_path = os.path.join(results_dir, 'model_comparison.png')
+        plot_path = os.path.join(results_dir, 'model_metrics_comparison.png')
         plt.savefig(plot_path)
         print(f"Plot saved to: {plot_path}")
         
@@ -215,7 +255,7 @@ def plot_results(model_results, results_dir):
         raise
 
 def save_results(model_results, ensemble_accuracy, ensemble_report, results_dir):
-    """Save all results to a text file."""
+    """Save all results to a text file with detailed metrics."""
     print("\n6. Saving results...")
     
     try:
@@ -227,6 +267,10 @@ def save_results(model_results, ensemble_accuracy, ensemble_report, results_dir)
             for model_name, results in model_results.items():
                 f.write(f"{model_name}:\n")
                 f.write(f"Accuracy: {results['accuracy']:.4f}\n")
+                f.write(f"Precision: {results['precision']:.4f}\n")
+                f.write(f"Recall: {results['recall']:.4f}\n")
+                f.write(f"False Positives: {results['false_positives']}\n")
+                f.write(f"Confusion Matrix:\n{results['confusion_matrix']}\n")
                 f.write(f"Best Parameters: {results['best_params']}\n")
                 f.write("\nClassification Report:\n")
                 f.write(results['report'])
@@ -243,6 +287,8 @@ def save_results(model_results, ensemble_accuracy, ensemble_report, results_dir)
     except Exception as e:
         print(f"Error saving results: {str(e)}")
         raise
+
+# ...existing code...
 
 def main():
     """Main function to run the analysis."""
