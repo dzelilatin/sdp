@@ -16,12 +16,17 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier, GradientBoostingClassifier, AdaBoostClassifier
 from sklearn.neural_network import MLPClassifier
 from sklearn.metrics import roc_curve, auc, accuracy_score, classification_report, confusion_matrix, precision_score, recall_score
+from imblearn.over_sampling import SMOTE
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
-import subprocess
 import time
 import logging
+import sqlite3
+import warnings
+warnings.filterwarnings("ignore")
+import json
+
 
 # Configure logging to write errors to a file
 logging.basicConfig(
@@ -30,49 +35,88 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
-def select_features(X_train, y_train):
-    """Perform Recursive Feature Elimination (RFE) for feature selection."""
-    print("\nPerforming feature selection...")
-    model = RandomForestClassifier(random_state=42)
-    rfe = RFE(model, n_features_to_select=10)  # Select top 10 features
-    X_train_selected = rfe.fit_transform(X_train, y_train)
-    selected_features = rfe.get_support(indices=True)
-    print(f"Selected features: {selected_features}")
-    return X_train_selected
-
-def plot_roc_curves(models, X_test, y_test, results_dir):
-    """Plot ROC curves for all models and save to the results directory."""
-    plt.figure(figsize=(10, 8))
-    for model_name, model in models.items():
-        try:
-            # Check if the model supports predict_proba
-            if hasattr(model, 'predict_proba'):
-                y_prob = model.predict_proba(X_test)[:, 1]
-                fpr, tpr, _ = roc_curve(y_test, y_prob)
-                roc_auc = auc(fpr, tpr)
-                plt.plot(fpr, tpr, label=f"{model_name} (AUC = {roc_auc:.2f})")
-            else:
-                logging.warning(f"{model_name} does not support predict_proba. Skipping ROC curve.")
-        except Exception as e:
-            logging.error(f"Error plotting ROC for {model_name}: {str(e)}")
-            continue
-    plt.plot([0, 1], [0, 1], 'k--')
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('ROC Curves')
-    plt.legend(loc='lower right')
-    
-    # Save plot to the results directory
-    roc_curve_path = os.path.join(results_dir, 'roc_curves.png')
-    plt.savefig(roc_curve_path)
-    print(f"ROC curves saved to: {roc_curve_path}")
-
 def create_results_directory():
     """Create directory for saving results if it doesn't exist."""
     results_dir = 'ml_results'
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
     return results_dir
+
+def add_age_range(df):
+    """Add AgeRange column based on SeniorCitizen and tenure."""
+    def map_age_range(row):
+        if row['SeniorCitizen'] == 'Yes':
+            return '66+'
+        elif row['tenure'] <= 12:
+            return '18-25'
+        elif row['tenure'] <= 36:
+            return '26-45'
+        elif row['tenure'] <= 60:
+            return '46-65'
+        else:
+            return '66+'
+    
+    df['AgeRange'] = df.apply(map_age_range, axis=1)
+    return df
+
+
+def initialize_database():
+    """Initialize SQLite database and create table for predictions."""
+    db_path = os.path.join('ml_results', 'predictions.db')
+
+    # Ensure the directory exists
+    if not os.path.exists('ml_results'):
+        os.makedirs('ml_results')
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Create table if it doesn't exist
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS predictions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            input_data TEXT,
+            prediction INTEGER,
+            model_name TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
+    print("Database initialized.")
+
+
+def save_prediction(input_data, prediction, model_name, column_names):
+    """Save prediction and input data with column names to the database."""
+    db_path = os.path.join('ml_results', 'predictions.db')
+    
+    # Convert to JSON with column names
+    input_data_json = json.dumps(dict(zip(column_names, input_data)))
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    # Insert into DB
+    cursor.execute('''
+        INSERT INTO predictions (input_data, prediction, model_name)
+        VALUES (?, ?, ?)
+    ''', (input_data_json, prediction, model_name))
+    
+    conn.commit()
+    conn.close()
+    print("Prediction saved to database.")
+
+def get_prediction_history():
+    """Retrieve all predictions from the database."""
+    db_path = os.path.join('ml_results', 'predictions.db')
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # Fetch all predictions
+    cursor.execute('SELECT * FROM predictions')
+    rows = cursor.fetchall()
+    conn.close()
+    return rows
 
 def load_and_preprocess_data(file_path):
     """Load and preprocess the dataset."""
@@ -88,6 +132,8 @@ def load_and_preprocess_data(file_path):
         
         # Create a new TotalCharges column based on MonthlyCharges * tenure
         df['TotalCharges'] = df['MonthlyCharges'] * df['tenure']
+
+        df = add_age_range(df)
         
         return df
     except Exception as e:
@@ -117,6 +163,25 @@ def demographic_analysis(df, results_dir):
         print("Demographic analysis completed and visualizations saved.")
     except Exception as e:
         logging.error(f"Error in demographic analysis: {str(e)}")
+        raise
+
+def correlation_analysis(df, results_dir):
+    """Perform correlation analysis and save heatmap."""
+    print("\n3. Performing correlation analysis...")
+    try:
+        numerical_cols = df.select_dtypes(include=['int64', 'float64']).columns
+        correlation_matrix = df[numerical_cols].corr()
+        
+        plt.figure(figsize=(12, 8))
+        sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt='.2f')
+        plt.title('Correlation Matrix of Numerical Features')
+        plt.tight_layout()
+        plt.savefig(os.path.join(results_dir, 'correlation_matrix.png'))
+        plt.close()
+
+        print("Correlation analysis completed and heatmap saved.")
+    except Exception as e:
+        logging.error(f"Error in correlation analysis: {str(e)}")
         raise
 
 def service_usage_analysis(df, results_dir):
@@ -174,25 +239,6 @@ def payment_analysis(df, results_dir):
         logging.error(f"Error in payment analysis: {str(e)}")
         raise
 
-def correlation_analysis(df, results_dir):
-    """Perform correlation analysis and save heatmap."""
-    print("\n3. Performing correlation analysis...")
-    try:
-        numerical_cols = df.select_dtypes(include=['int64', 'float64']).columns
-        correlation_matrix = df[numerical_cols].corr()
-        
-        plt.figure(figsize=(12, 8))
-        sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt='.2f')
-        plt.title('Correlation Matrix of Numerical Features')
-        plt.tight_layout()
-        plt.savefig(os.path.join(results_dir, 'correlation_matrix.png'))
-        plt.close()
-
-        print("Correlation analysis completed and heatmap saved.")
-    except Exception as e:
-        logging.error(f"Error in correlation analysis: {str(e)}")
-        raise
-
 def prepare_features(df):
     """Prepare features and target variable."""
     print("\n2. Preparing features and target variable...")
@@ -232,13 +278,26 @@ def prepare_features(df):
         X_test_selected = rfe.transform(X_test_scaled)  # Transform test set using fitted selector
         
         print(f"Selected features: {rfe.get_support(indices=True)}")
-        
-        return X_train_selected, X_test_selected, y_train, y_test
+
+        smote = SMOTE(random_state=42)
+        X_train_resampled, y_train_resampled = smote.fit_resample(X_train_selected, y_train)
+
+        return X_train_resampled, X_test_selected, y_train_resampled, y_test
+    
     except Exception as e:
         logging.error(f"Error preparing features: {str(e)}")
         raise
 
-# ...existing code...
+def select_features(X_train, y_train):
+    """Perform Recursive Feature Elimination (RFE) for feature selection."""
+    print("\nPerforming feature selection...")
+    model = RandomForestClassifier(random_state=42)
+    rfe = RFE(model, n_features_to_select=10)  # Select top 10 features
+    X_train_selected = rfe.fit_transform(X_train, y_train)
+    selected_features = rfe.get_support(indices=True)
+    print(f"Selected features: {selected_features}")
+    return X_train_selected
+
 
 def train_models(X_train, X_test, y_train, y_test):
     """Train and evaluate multiple models with detailed metrics."""
@@ -262,9 +321,9 @@ def train_models(X_train, X_test, y_train, y_test):
             'learning_rate': [0.1]
         },
         'SVM': {
-            'C': [0.1, 1],
-            'kernel': ['rbf'],
-            'gamma': ['scale']
+            'C': [0.1, 1, 10],
+            'kernel': ['rbf', 'linear'],
+            'gamma': ['scale', 'auto']
         },
         'Gradient Boosting': {
             'n_estimators': [100, 200],
@@ -326,13 +385,15 @@ def train_models(X_train, X_test, y_train, y_test):
                 model, 
                 param_grids[model_name], 
                 cv=5, 
-                scoring='accuracy', 
+                scoring='recall', 
                 n_jobs=-1
             )
             grid_search.fit(X_train, y_train)
             
             # Get best model and predictions
             best_model = grid_search.best_estimator_
+            trained_models[model_name] = best_model 
+
             predictions = best_model.predict(X_test)
             
             # Calculate metrics
@@ -369,8 +430,6 @@ def train_models(X_train, X_test, y_train, y_test):
             continue
     
     return model_results, trained_models
-
-# ...existing code...
 
 def create_ensemble(X_train, X_test, y_train, y_test, model_results, models):
     """Create and evaluate an ensemble of the top 3 models."""
@@ -414,6 +473,33 @@ def create_ensemble(X_train, X_test, y_train, y_test, model_results, models):
     except Exception as e:
         logging.error(f"Error creating ensemble: {str(e)}")
         raise
+
+def plot_roc_curves(models, X_test, y_test, results_dir):
+    """Plot ROC curves for all models and save to the results directory."""
+    plt.figure(figsize=(10, 8))
+    for model_name, model in models.items():
+        try:
+            # Check if the model supports predict_proba
+            if hasattr(model, 'predict_proba'):
+                y_prob = model.predict_proba(X_test)[:, 1]
+                fpr, tpr, _ = roc_curve(y_test, y_prob)
+                roc_auc = auc(fpr, tpr)
+                plt.plot(fpr, tpr, label=f"{model_name} (AUC = {roc_auc:.2f})")
+            else:
+                logging.warning(f"{model_name} does not support predict_proba. Skipping ROC curve.")
+        except Exception as e:
+            logging.error(f"Error plotting ROC for {model_name}: {str(e)}")
+            continue
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC Curves')
+    plt.legend(loc='lower right')
+    
+    # Save plot to the results directory
+    roc_curve_path = os.path.join(results_dir, 'roc_curves.png')
+    plt.savefig(roc_curve_path)
+    print(f"ROC curves saved to: {roc_curve_path}")
 
 def plot_results(model_results, results_dir):
     """Generate and save comparison plots for model metrics."""
