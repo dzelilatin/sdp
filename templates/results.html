@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">ML Analysis</a>
+        </div>
+    </nav>
+    <div class="container mt-5">
+        <h1 class="text-center">Model Results</h1>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>Accuracy</th>
+                    <th>Precision</th>
+                    <th>Recall</th>
+                    <th>False Positives</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for model, metrics in model_results.items() %}
+                <tr>
+                    <td>{{ model }}</td>
+                    <td>{{ metrics['accuracy'] }}</td>
+                    <td>{{ metrics['precision'] }}</td>
+                    <td>{{ metrics['recall'] }}</td>
+                    <td>{{ metrics['false_positives'] }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <h2 class="text-center">Ensemble Accuracy: {{ ensemble_accuracy }}</h2>
+        <div class="text-center">
+            <a href="/results/model_metrics_comparison.png" class="btn btn-success" download>Download Metrics Plot</a>
+            <a href="/results/model_results.txt" class="btn btn-info" download>Download Results File</a>
+        </div>
+
+        <!-- Chart.js Canvas -->
+        <canvas id="metricsChart" width="400" height="200"></canvas>
+    </div>
+
+    <!-- Chart.js Script -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        const ctx = document.getElementById('metricsChart').getContext('2d');
+        const metricsChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Logistic Regression', 'Random Forest', 'XGBoost', 'SVM'],
+                datasets: [
+                    {
+                        label: 'Accuracy',
+                        data: [0.7921, 0.7921, 0.8155, 0.6984],
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    },
+                    {
+                        label: 'Precision',
+                        data: [0.6389, 0.6587, 0.6890, 0.4600],
+                        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                        borderColor: 'rgba(255, 99, 132, 1)',
+                        borderWidth: 1
+                    }
+                ]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>

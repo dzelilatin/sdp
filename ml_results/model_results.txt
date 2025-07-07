@@ -2,104 +2,258 @@ MODEL PERFORMANCE RESULTS
 =======================
 
 Logistic Regression:
-Accuracy: 0.7921
-Precision: 0.6389
-Recall: 0.4933
-False Positives: 104
+Accuracy: 0.8077
+Precision: 0.6604
+Recall: 0.5630
+False Positives: 108
 Confusion Matrix:
-[[932 104]
- [189 184]]
-Best Parameters: {'C': 0.1, 'penalty': 'l2', 'solver': 'lbfgs'}
+[[928 108]
+ [163 210]]
+Best Parameters: {'C': 1, 'penalty': 'l2', 'solver': 'lbfgs'}
 
 Classification Report:
               precision    recall  f1-score   support
 
-           0       0.83      0.90      0.86      1036
-           1       0.64      0.49      0.56       373
+           0       0.85      0.90      0.87      1036
+           1       0.66      0.56      0.61       373
 
-    accuracy                           0.79      1409
-   macro avg       0.74      0.70      0.71      1409
-weighted avg       0.78      0.79      0.78      1409
+    accuracy                           0.81      1409
+   macro avg       0.76      0.73      0.74      1409
+weighted avg       0.80      0.81      0.80      1409
+
+==================================================
+
+Ridge Classifier:
+Accuracy: 0.8062
+Precision: 0.6736
+Recall: 0.5201
+False Positives: 94
+Confusion Matrix:
+[[942  94]
+ [179 194]]
+Best Parameters: {'alpha': 0.1, 'solver': 'auto'}
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.84      0.91      0.87      1036
+           1       0.67      0.52      0.59       373
+
+    accuracy                           0.81      1409
+   macro avg       0.76      0.71      0.73      1409
+weighted avg       0.80      0.81      0.80      1409
+
+==================================================
+
+Naive Bayes:
+Accuracy: 0.7679
+Precision: 0.5444
+Recall: 0.7560
+False Positives: 236
+Confusion Matrix:
+[[800 236]
+ [ 91 282]]
+Best Parameters: {}
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.90      0.77      0.83      1036
+           1       0.54      0.76      0.63       373
+
+    accuracy                           0.77      1409
+   macro avg       0.72      0.76      0.73      1409
+weighted avg       0.80      0.77      0.78      1409
+
+==================================================
+
+SVM:
+Accuracy: 0.8041
+Precision: 0.6667
+Recall: 0.5201
+False Positives: 97
+Confusion Matrix:
+[[939  97]
+ [179 194]]
+Best Parameters: {'C': 1, 'gamma': 'scale', 'kernel': 'rbf'}
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.84      0.91      0.87      1036
+           1       0.67      0.52      0.58       373
+
+    accuracy                           0.80      1409
+   macro avg       0.75      0.71      0.73      1409
+weighted avg       0.79      0.80      0.80      1409
+
+==================================================
+
+KNN:
+Accuracy: 0.8006
+Precision: 0.6554
+Recall: 0.5201
+False Positives: 102
+Confusion Matrix:
+[[934 102]
+ [179 194]]
+Best Parameters: {'n_neighbors': 7, 'weights': 'uniform'}
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.84      0.90      0.87      1036
+           1       0.66      0.52      0.58       373
+
+    accuracy                           0.80      1409
+   macro avg       0.75      0.71      0.72      1409
+weighted avg       0.79      0.80      0.79      1409
+
+==================================================
+
+Decision Tree:
+Accuracy: 0.7601
+Precision: 0.5538
+Recall: 0.4826
+False Positives: 145
+Confusion Matrix:
+[[891 145]
+ [193 180]]
+Best Parameters: {'max_depth': 10, 'min_samples_leaf': 2, 'min_samples_split': 2}
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.82      0.86      0.84      1036
+           1       0.55      0.48      0.52       373
+
+    accuracy                           0.76      1409
+   macro avg       0.69      0.67      0.68      1409
+weighted avg       0.75      0.76      0.75      1409
 
 ==================================================
 
 Random Forest:
-Accuracy: 0.7921
-Precision: 0.6587
-Recall: 0.4450
-False Positives: 86
+Accuracy: 0.8070
+Precision: 0.6634
+Recall: 0.5496
+False Positives: 104
 Confusion Matrix:
-[[950  86]
- [207 166]]
-Best Parameters: {'max_depth': None, 'min_samples_split': 5, 'n_estimators': 200}
+[[932 104]
+ [168 205]]
+Best Parameters: {'max_depth': 10, 'min_samples_split': 2, 'n_estimators': 100}
 
 Classification Report:
               precision    recall  f1-score   support
 
-           0       0.82      0.92      0.87      1036
-           1       0.66      0.45      0.53       373
+           0       0.85      0.90      0.87      1036
+           1       0.66      0.55      0.60       373
 
-    accuracy                           0.79      1409
-   macro avg       0.74      0.68      0.70      1409
-weighted avg       0.78      0.79      0.78      1409
+    accuracy                           0.81      1409
+   macro avg       0.76      0.72      0.74      1409
+weighted avg       0.80      0.81      0.80      1409
 
 ==================================================
 
 XGBoost:
-Accuracy: 0.8155
-Precision: 0.6890
-Recall: 0.5523
-False Positives: 93
+Accuracy: 0.8098
+Precision: 0.6756
+Recall: 0.5416
+False Positives: 97
 Confusion Matrix:
-[[943  93]
- [167 206]]
+[[939  97]
+ [171 202]]
 Best Parameters: {'learning_rate': 0.1, 'max_depth': 3, 'n_estimators': 100}
 
 Classification Report:
               precision    recall  f1-score   support
 
            0       0.85      0.91      0.88      1036
-           1       0.69      0.55      0.61       373
+           1       0.68      0.54      0.60       373
 
-    accuracy                           0.82      1409
-   macro avg       0.77      0.73      0.75      1409
-weighted avg       0.81      0.82      0.81      1409
+    accuracy                           0.81      1409
+   macro avg       0.76      0.72      0.74      1409
+weighted avg       0.80      0.81      0.80      1409
 
 ==================================================
 
-SVM:
-Accuracy: 0.6984
-Precision: 0.4600
-Recall: 0.8016
-False Positives: 351
+Gradient Boosting:
+Accuracy: 0.8077
+Precision: 0.6667
+Recall: 0.5469
+False Positives: 102
 Confusion Matrix:
-[[685 351]
- [ 74 299]]
-Best Parameters: {'C': 1, 'gamma': 'scale', 'kernel': 'rbf'}
+[[934 102]
+ [169 204]]
+Best Parameters: {'learning_rate': 0.1, 'max_depth': 3, 'n_estimators': 100}
 
 Classification Report:
               precision    recall  f1-score   support
 
-           0       0.90      0.66      0.76      1036
-           1       0.46      0.80      0.58       373
+           0       0.85      0.90      0.87      1036
+           1       0.67      0.55      0.60       373
 
-    accuracy                           0.70      1409
-   macro avg       0.68      0.73      0.67      1409
-weighted avg       0.79      0.70      0.72      1409
+    accuracy                           0.81      1409
+   macro avg       0.76      0.72      0.74      1409
+weighted avg       0.80      0.81      0.80      1409
+
+==================================================
+
+AdaBoost:
+Accuracy: 0.8055
+Precision: 0.6592
+Recall: 0.5496
+False Positives: 106
+Confusion Matrix:
+[[930 106]
+ [168 205]]
+Best Parameters: {'learning_rate': 1.0, 'n_estimators': 100}
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.85      0.90      0.87      1036
+           1       0.66      0.55      0.60       373
+
+    accuracy                           0.81      1409
+   macro avg       0.75      0.72      0.74      1409
+weighted avg       0.80      0.81      0.80      1409
+
+==================================================
+
+Neural Network:
+Accuracy: 0.8027
+Precision: 0.6527
+Recall: 0.5442
+False Positives: 108
+Confusion Matrix:
+[[928 108]
+ [170 203]]
+Best Parameters: {'activation': 'relu', 'hidden_layer_sizes': (50,), 'solver': 'adam'}
+
+Classification Report:
+              precision    recall  f1-score   support
+
+           0       0.85      0.90      0.87      1036
+           1       0.65      0.54      0.59       373
+
+    accuracy                           0.80      1409
+   macro avg       0.75      0.72      0.73      1409
+weighted avg       0.79      0.80      0.80      1409
 
 ==================================================
 
 
 ENSEMBLE MODEL RESULTS
 =====================
-Accuracy: 0.8041
+Accuracy: 0.8070
 
 Classification Report:
               precision    recall  f1-score   support
 
-           0       0.84      0.90      0.87      1036
-           1       0.66      0.53      0.59       373
+           0       0.85      0.90      0.87      1036
+           1       0.67      0.54      0.60       373
 
-    accuracy                           0.80      1409
-   macro avg       0.75      0.72      0.73      1409
-weighted avg       0.79      0.80      0.80      1409
+    accuracy                           0.81      1409
+   macro avg       0.76      0.72      0.74      1409
+weighted avg       0.80      0.81      0.80      1409

@@ -1,0 +1,80 @@
+2025-07-07 17:46:22,195 - ERROR - Error preparing features: "['Race', 'Gender'] not found in axis"
+2025-07-07 17:46:22,196 - ERROR - Error in main execution: "['Race', 'Gender'] not found in axis"
+2025-07-07 17:47:38,016 - ERROR - Error preparing features: "['Race', 'Gender'] not found in axis"
+2025-07-07 17:47:38,016 - ERROR - Error in main execution: "['Race', 'Gender'] not found in axis"
+2025-07-07 17:49:18,391 - ERROR - Error training Logistic Regression: X has 46 features, but LogisticRegression is expecting 10 features as input.
+2025-07-07 17:49:18,531 - ERROR - Error training Ridge Classifier: X has 46 features, but RidgeClassifier is expecting 10 features as input.
+2025-07-07 17:49:18,562 - ERROR - Error training Naive Bayes: X has 46 features, but GaussianNB is expecting 10 features as input.
+2025-07-07 17:49:28,140 - ERROR - Error training SVM: X has 46 features, but SVC is expecting 10 features as input.
+2025-07-07 17:49:28,548 - ERROR - Error training KNN: X has 46 features, but KNeighborsClassifier is expecting 10 features as input.
+2025-07-07 17:49:28,916 - ERROR - Error training Decision Tree: X has 46 features, but DecisionTreeClassifier is expecting 10 features as input.
+2025-07-07 17:49:38,068 - ERROR - Error training Random Forest: X has 46 features, but RandomForestClassifier is expecting 10 features as input.
+2025-07-07 17:49:38,596 - ERROR - Error training XGBoost: Feature shape mismatch, expected: 10, got 46
+2025-07-07 17:49:47,040 - ERROR - Error training Gradient Boosting: X has 46 features, but GradientBoostingClassifier is expecting 10 features as input.
+2025-07-07 17:49:49,055 - ERROR - Error training AdaBoost: X has 46 features, but AdaBoostClassifier is expecting 10 features as input.
+2025-07-07 17:50:51,903 - ERROR - Error training Neural Network: X has 46 features, but MLPClassifier is expecting 10 features as input.
+2025-07-07 17:50:51,904 - ERROR - Error creating ensemble: Invalid 'estimators' attribute, 'estimators' should be a non-empty list of (string, estimator) tuples.
+2025-07-07 17:50:51,904 - ERROR - Error in main execution: Invalid 'estimators' attribute, 'estimators' should be a non-empty list of (string, estimator) tuples.
+2025-07-07 17:52:52,467 - ERROR - Error preparing features: Found input variables with inconsistent numbers of samples: [1409, 5634]
+2025-07-07 17:52:52,467 - ERROR - Error in main execution: Found input variables with inconsistent numbers of samples: [1409, 5634]
+2025-07-07 17:56:01,687 - ERROR - Error plotting ROC for Logistic Regression: This LogisticRegression instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 17:56:01,687 - ERROR - Error plotting ROC for Random Forest: This RandomForestClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 17:56:01,687 - ERROR - Error plotting ROC for XGBoost: need to call fit or load_model beforehand
+2025-07-07 17:56:01,688 - ERROR - Error plotting ROC for SVM: This SVC instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 17:56:01,688 - ERROR - Error plotting ROC for Gradient Boosting: This GradientBoostingClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 17:56:01,688 - ERROR - Error plotting ROC for AdaBoost: This AdaBoostClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 17:56:01,688 - ERROR - Error plotting ROC for Neural Network: This MLPClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 17:56:01,688 - ERROR - Error plotting ROC for Ridge Classifier: 'RidgeClassifier' object has no attribute 'predict_proba'
+2025-07-07 17:56:01,688 - ERROR - Error plotting ROC for Naive Bayes: This GaussianNB instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 17:56:01,688 - ERROR - Error plotting ROC for KNN: This KNeighborsClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 17:56:01,688 - ERROR - Error plotting ROC for Decision Tree: This DecisionTreeClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:04:01,855 - ERROR - Error plotting ROC for Logistic Regression: This LogisticRegression instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:04:01,856 - ERROR - Error plotting ROC for Naive Bayes: This GaussianNB instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:04:01,856 - ERROR - Error plotting ROC for SVM: This SVC instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:04:01,856 - ERROR - Error plotting ROC for KNN: This KNeighborsClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:04:01,856 - ERROR - Error plotting ROC for Decision Tree: This DecisionTreeClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:04:01,857 - ERROR - Error plotting ROC for Random Forest: This RandomForestClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:04:01,857 - ERROR - Error plotting ROC for XGBoost: need to call fit or load_model beforehand
+2025-07-07 18:04:01,857 - ERROR - Error plotting ROC for Gradient Boosting: This GradientBoostingClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:04:01,857 - ERROR - Error plotting ROC for AdaBoost: This AdaBoostClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:04:01,857 - ERROR - Error plotting ROC for Neural Network: This MLPClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:08:23,365 - ERROR - Error plotting ROC for Logistic Regression: This LogisticRegression instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:08:23,366 - ERROR - Error plotting ROC for Naive Bayes: This GaussianNB instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:08:23,366 - ERROR - Error plotting ROC for SVM: This SVC instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:08:23,366 - ERROR - Error plotting ROC for KNN: This KNeighborsClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:08:23,366 - ERROR - Error plotting ROC for Decision Tree: This DecisionTreeClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:08:23,366 - ERROR - Error plotting ROC for Random Forest: This RandomForestClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:08:23,366 - ERROR - Error plotting ROC for XGBoost: need to call fit or load_model beforehand
+2025-07-07 18:08:23,367 - ERROR - Error plotting ROC for Gradient Boosting: This GradientBoostingClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:08:23,367 - ERROR - Error plotting ROC for AdaBoost: This AdaBoostClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:08:23,367 - ERROR - Error plotting ROC for Neural Network: This MLPClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:13:18,760 - ERROR - Error plotting ROC for Logistic Regression: This LogisticRegression instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:13:18,761 - ERROR - Error plotting ROC for Naive Bayes: This GaussianNB instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:13:18,761 - ERROR - Error plotting ROC for SVM: This SVC instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:13:18,761 - ERROR - Error plotting ROC for KNN: This KNeighborsClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:13:18,761 - ERROR - Error plotting ROC for Decision Tree: This DecisionTreeClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:13:18,761 - ERROR - Error plotting ROC for Random Forest: This RandomForestClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:13:18,761 - ERROR - Error plotting ROC for XGBoost: need to call fit or load_model beforehand
+2025-07-07 18:13:18,762 - ERROR - Error plotting ROC for Gradient Boosting: This GradientBoostingClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:13:18,762 - ERROR - Error plotting ROC for AdaBoost: This AdaBoostClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:13:18,762 - ERROR - Error plotting ROC for Neural Network: This MLPClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:19:22,903 - ERROR - Error plotting ROC for Logistic Regression: This LogisticRegression instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:19:22,903 - ERROR - Error plotting ROC for Naive Bayes: This GaussianNB instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:19:22,904 - ERROR - Error plotting ROC for SVM: This SVC instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:19:22,904 - ERROR - Error plotting ROC for KNN: This KNeighborsClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:19:22,904 - ERROR - Error plotting ROC for Decision Tree: This DecisionTreeClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:19:22,904 - ERROR - Error plotting ROC for Random Forest: This RandomForestClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:19:22,904 - ERROR - Error plotting ROC for XGBoost: need to call fit or load_model beforehand
+2025-07-07 18:19:22,904 - ERROR - Error plotting ROC for Gradient Boosting: This GradientBoostingClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:19:22,904 - ERROR - Error plotting ROC for AdaBoost: This AdaBoostClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:19:22,905 - ERROR - Error plotting ROC for Neural Network: This MLPClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:22:19,539 - ERROR - Error plotting ROC for Logistic Regression: This LogisticRegression instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:22:19,539 - ERROR - Error plotting ROC for Naive Bayes: This GaussianNB instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:22:19,539 - ERROR - Error plotting ROC for SVM: This SVC instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:22:19,539 - ERROR - Error plotting ROC for KNN: This KNeighborsClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:22:19,539 - ERROR - Error plotting ROC for Decision Tree: This DecisionTreeClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:22:19,539 - ERROR - Error plotting ROC for Random Forest: This RandomForestClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:22:19,539 - ERROR - Error plotting ROC for XGBoost: need to call fit or load_model beforehand
+2025-07-07 18:22:19,540 - ERROR - Error plotting ROC for Gradient Boosting: This GradientBoostingClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:22:19,540 - ERROR - Error plotting ROC for AdaBoost: This AdaBoostClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 18:22:19,540 - ERROR - Error plotting ROC for Neural Network: This MLPClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
