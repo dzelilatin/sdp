@@ -78,3 +78,4 @@
 2025-07-07 18:22:19,540 - ERROR - Error plotting ROC for Gradient Boosting: This GradientBoostingClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
 2025-07-07 18:22:19,540 - ERROR - Error plotting ROC for AdaBoost: This AdaBoostClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
 2025-07-07 18:22:19,540 - ERROR - Error plotting ROC for Neural Network: This MLPClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
+2025-07-07 22:15:27,346 - ERROR - Error in main execution: too many values to unpack (expected 4)

@@ -19,6 +19,8 @@ from sklearn.metrics import roc_curve, auc, accuracy_score, classification_repor
 from imblearn.over_sampling import SMOTE
 import matplotlib.pyplot as plt
 import seaborn as sns
+import argparse
+import joblib
 import os
 import time
 import logging
@@ -43,20 +45,7 @@ def create_results_directory():
     return results_dir
 
 def add_age_range(df):
-    """Add AgeRange column based on SeniorCitizen and tenure."""
-    def map_age_range(row):
-        if row['SeniorCitizen'] == 'Yes':
-            return '66+'
-        elif row['tenure'] <= 12:
-            return '18-25'
-        elif row['tenure'] <= 36:
-            return '26-45'
-        elif row['tenure'] <= 60:
-            return '46-65'
-        else:
-            return '66+'
-    
-    df['AgeRange'] = df.apply(map_age_range, axis=1)
+    df['AgeRange'] = df['SeniorCitizen'].apply(lambda x: '66+' if x == 'Yes' else '18-65')
     return df
 
 
@@ -117,6 +106,20 @@ def get_prediction_history():
     rows = cursor.fetchall()
     conn.close()
     return rows
+
+def save_models(trained_models, path='ml_results/models/'):
+    os.makedirs(path, exist_ok=True)
+    for name, model in trained_models.items():
+        joblib.dump(model, os.path.join(path, f"{name.replace(' ', '_')}.joblib"))
+    print("Models saved.")
+
+def load_models(path='ml_results/models/'):
+    models = {}
+    for file in os.listdir(path):
+        if file.endswith('.joblib'):
+            model_name = file.replace('_', ' ').replace('.joblib', '')
+            models[model_name] = joblib.load(os.path.join(path, file))
+    return models
 
 def load_and_preprocess_data(file_path):
     """Load and preprocess the dataset."""
@@ -274,6 +277,9 @@ def prepare_features(df):
         print("\nPerforming feature selection...")
         model = RandomForestClassifier(random_state=42)
         rfe = RFE(model, n_features_to_select=10)  # Select top 10 features
+        rfe.fit(X_train_scaled, y_train)
+        selected_indices = rfe.get_support(indices=True)
+        selected_feature_names = X_encoded.columns[selected_indices].tolist()
         X_train_selected = rfe.fit_transform(X_train_scaled, y_train)
         X_test_selected = rfe.transform(X_test_scaled)  # Transform test set using fitted selector
         
@@ -282,7 +288,7 @@ def prepare_features(df):
         smote = SMOTE(random_state=42)
         X_train_resampled, y_train_resampled = smote.fit_resample(X_train_selected, y_train)
 
-        return X_train_resampled, X_test_selected, y_train_resampled, y_test
+        return X_train_resampled, X_test_selected, y_train_resampled, y_test, selected_feature_names
     
     except Exception as e:
         logging.error(f"Error preparing features: {str(e)}")
@@ -585,59 +591,92 @@ def save_results(model_results, ensemble_accuracy, ensemble_report, results_dir)
 def main():
     """Main function to run the analysis."""
     try:
-        # Create results directory
+        # Parse command-line arguments for flexible data path
+        parser = argparse.ArgumentParser(description="Run Telco churn ML pipeline")
+        parser.add_argument(
+            '--data-path',
+            default=None,
+            help='Path to the dataset CSV file'
+        )
+        args = parser.parse_args()
+
+        # Try multiple default paths including user input
+        possible_paths = [
+            args.data_path,
+            'uploads/telcodataset.csv',
+            '/Users/user/Downloads/telcodataset.csv'
+        ]
+        data_path = None
+        for p in possible_paths:
+            if p and os.path.isfile(p):
+                data_path = p
+                break
+
+        if data_path is None:
+            raise FileNotFoundError("Dataset CSV file not found in provided or default locations.")
+
+        print(f"Using dataset path: {data_path}")
+
+        # Create results directory and initialize database
         results_dir = create_results_directory()
-        
+        initialize_database()
+
         # Load and preprocess data
-        data_path = '/Users/user/Downloads/telcodataset.csv'
         df = load_and_preprocess_data(data_path)
 
+        # Perform EDA and save visualizations
         demographic_analysis(df, results_dir)
         correlation_analysis(df, results_dir)
         service_usage_analysis(df, results_dir)
         payment_analysis(df, results_dir)
-        
+
         # Prepare features
-        X_train, X_test, y_train, y_test = prepare_features(df)
-        
+        X_train, X_test, y_train, y_test, selected_feature_names = prepare_features(df)
+        print("Selected features:", selected_feature_names)
+
+
         # Train models
         model_results, trained_models = train_models(X_train, X_test, y_train, y_test)
-        
-        # Initialize models (this was missing in the original code)
-        models = {
-            'Logistic Regression': LogisticRegression(max_iter=1000),
-            'Ridge Classifier': RidgeClassifier(),
-            'Naive Bayes': GaussianNB(),
-            'SVM': SVC(probability=True),
-            'KNN': KNeighborsClassifier(),
-            'Decision Tree': DecisionTreeClassifier(random_state=42),
-            'Random Forest': RandomForestClassifier(random_state=42),
-            'XGBoost': XGBClassifier(random_state=42),
-            'Gradient Boosting': GradientBoostingClassifier(random_state=42),
-            'AdaBoost': AdaBoostClassifier(random_state=42),
-            'Neural Network': MLPClassifier(max_iter=3000, random_state=42, solver='adam', learning_rate='adaptive')
-        }
-        
-        # Create ensemble
+
+        # Save trained models to disk for future use
+        save_models(trained_models)
+
+        # Create ensemble from the trained models (use trained_models, not new instances)
         ensemble_accuracy, ensemble_report = create_ensemble(
-            X_train, X_test, y_train, y_test, model_results, models
+            X_train, X_test, y_train, y_test, model_results, trained_models
         )
 
-        # Plot ROC curves
+        # Plot ROC curves using trained models
         plot_roc_curves(trained_models, X_test, y_test, results_dir)
-        
-        # Create visualization
+
+        # Plot and save performance comparison visuals
         plot_results(model_results, results_dir)
-        
-        # Save results
+
+        # Save text report of results
         save_results(model_results, ensemble_accuracy, ensemble_report, results_dir)
-        
+
+        # Example: take first test sample, predict with best model, and save to DB
+        best_model_name = max(model_results, key=lambda k: model_results[k]['accuracy'])
+        best_model = trained_models[best_model_name]
+
+        sample_input = X_test[0]  # numpy array, scaled and selected features
+        sample_input_list = sample_input.tolist()
+
+        prediction = best_model.predict(sample_input.reshape(1, -1))[0]
+
+        # TODO: Provide correct column names corresponding to selected features here.
+        # For now, placeholders:
+        column_names = [f"feature_{i}" for i in range(len(sample_input_list))]
+
+        save_prediction(sample_input_list, int(prediction), best_model_name, column_names)
+
         print("\nAnalysis completed successfully!")
-        
+
     except Exception as e:
         logging.error(f"Error in main execution: {str(e)}")
         print(f"Error in main execution. Check error_log.txt for details.")
         raise
+
 
 if __name__ == "__main__":
     main()

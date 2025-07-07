@@ -246,14 +246,14 @@ weighted avg       0.80      0.74      0.76      1409
 
 ENSEMBLE MODEL RESULTS
 =====================
-Accuracy: 0.7651
+Accuracy: 0.7644
 
 Classification Report:
               precision    recall  f1-score   support
 
-           0       0.88      0.78      0.83      1036
-           1       0.54      0.71      0.62       373
+           0       0.91      0.75      0.82      1036
+           1       0.54      0.80      0.64       373
 
-    accuracy                           0.77      1409
-   macro avg       0.71      0.75      0.72      1409
-weighted avg       0.79      0.77      0.77      1409
+    accuracy                           0.76      1409
+   macro avg       0.72      0.77      0.73      1409
+weighted avg       0.81      0.76      0.78      1409
