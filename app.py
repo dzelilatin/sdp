@@ -1,78 +1,95 @@
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory
-import os
+import streamlit as st
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from ml_analysis import (
+    add_age_range,
+    create_results_directory,
+    initialize_database,
+    prepare_features,
+    train_models,
+    create_ensemble,
+    plot_roc_curves,
+    plot_results,
+    save_prediction,
+)
 
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
-from xgboost import XGBClassifier
-from ml_analysis import create_results_directory, load_and_preprocess_data, prepare_features, train_models, create_ensemble, plot_results, save_results
+# Set up Streamlit app
+st.set_page_config(page_title="Customer Churn Prediction", layout="wide")
+st.title("📉 Customer Churn Prediction Dashboard")
 
-app = Flask(__name__)
-UPLOAD_FOLDER = 'uploads'
-RESULTS_FOLDER = 'ml_results'
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(RESULTS_FOLDER, exist_ok=True)
+uploaded_file = st.file_uploader("Upload your customer data CSV file", type=["csv"])
 
-@app.route('/')
-def index():
-    """Render the homepage."""
-    return render_template('index.html')
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
+    st.subheader("Raw Uploaded Data")
+    st.write(df.head())
 
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    """Handle dataset upload."""
-    if 'file' not in request.files:
-        return redirect(request.url)
-    file = request.files['file']
-    if file.filename == '':
-        return redirect(request.url)
-    if file and file.filename.endswith('.csv'):
-        file_path = os.path.join(UPLOAD_FOLDER, file.filename)
-        file.save(file_path)
-        return redirect(url_for('train_model', file_path=file_path))
-    else:
-        return "Invalid file type. Please upload a CSV file."
+    # Setup directories and DB
+    create_results_directory()
+    initialize_database()
 
-@app.route('/train')
-def train_model():
-    """Train models and display results."""
-    file_path = request.args.get('file_path')
-    try:
-        # Load and preprocess data
-        df = load_and_preprocess_data(file_path)
-        X_train, X_test, y_train, y_test = prepare_features(df)
+    # Feature preparation
+    df = add_age_range(df)
+    X_train_resampled_df, X_test_selected, y_train_resampled, y_test, selected_feature_names = prepare_features(df)
+    selected_X_train = X_train_resampled_df
 
-        # Train models
-        model_results = train_models(X_train, X_test, y_train, y_test)
+    st.success("✅ Data prepared and features extracted.")
 
-        # Initialize models
-        models = {
-            'Logistic Regression': LogisticRegression(max_iter=1000),
-            'Random Forest': RandomForestClassifier(random_state=42),
-            'XGBoost': XGBClassifier(random_state=42),
-            'SVM': SVC(probability=True)
-        }
+    # Model training
+    st.subheader("Training Models...")
+    model_results, trained_models = train_models(
+        selected_X_train, X_test_selected, y_train_resampled, y_test
+    )
 
-        # Create ensemble
-        ensemble_accuracy, ensemble_report = create_ensemble(
-            X_train, X_test, y_train, y_test, model_results, models
-        )
+    # Basic checks
+    assert isinstance(model_results, dict), "Expected model_results to be a dict"
+    assert isinstance(trained_models, dict), "Expected trained_models to be a dict"
 
-        # Create visualization
-        plot_results(model_results, RESULTS_FOLDER)
+    st.success("✅ Models trained.")
 
-        # Save results
-        save_results(model_results, ensemble_accuracy, ensemble_report, RESULTS_FOLDER)
+    # Create ensemble model
+    ensemble_model = create_ensemble(
+        X_train=selected_X_train,
+        X_test=X_test_selected,
+        y_train=y_train_resampled,
+        y_test=y_test,
+        model_results=model_results,
+        models=trained_models
+    )
+    st.success("✅ Ensemble model created.")
 
-        return render_template('results.html', model_results=model_results, ensemble_accuracy=ensemble_accuracy)
+    # Plotting results
+    st.subheader("📈 Model Performance")
 
-    except Exception as e:
-        return render_template('error.html', error_message=str(e))
+    plot_roc_curves(trained_models, X_test_selected, y_test, results_dir="ml_results")
+    st.image("ml_results/roc_curves.png")
 
-@app.route('/results/<filename>')
-def download_results(filename):
-    """Download results or plots."""
-    return send_from_directory(RESULTS_FOLDER, filename)
+    plot_results(model_results, results_dir="ml_results")
+    st.image("ml_results/model_accuracy_comparison.png")
+    st.image("ml_results/model_metrics_comparison.png")
 
-if __name__ == '__main__':
-    app.run(debug=True)
+    # Prediction interface
+    st.subheader("📊 Predict New Customer Churn")
+    input_data = {}
+
+    for col in selected_X_train.columns:
+        val = st.text_input(f"{col}", "")
+        input_data[col] = val
+
+    if st.button("🔍 Predict Churn"):
+        try:
+            input_df = pd.DataFrame([input_data])
+            input_df = input_df.astype(selected_X_train.dtypes.to_dict())  # Match types
+
+            prediction = ensemble_model.predict(input_df)[0]
+            proba = ensemble_model.predict_proba(input_df)[0][1]
+
+            st.success(f"🎯 Prediction: {'Churn' if prediction == 1 else 'Not Churn'}")
+            st.info(f"🧠 Probability of Churn: {proba:.2f}")
+
+            # Save prediction
+            save_prediction(input_data, prediction, proba)
+            st.success("✅ Prediction saved successfully.")
+
+        except Exception as e:
+            st.error(f"❌ Error during prediction: {str(e)}")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import matplotlib
-from sklearn.feature_selection import RFE
+from sklearn.feature_selection import SelectKBest, chi2
 from xgboost import XGBClassifier
 matplotlib.use('Agg')  # Use non-interactive backend
 import pandas as pd
@@ -143,24 +143,43 @@ def load_and_preprocess_data(file_path):
         logging.error(f"Error loading dataset: {str(e)}")
         raise
 
-def demographic_analysis(df, results_dir):
+
+def demographic_analysis(df, vis_dir):
     """Perform demographic analysis and save visualizations."""
-    print("\n2. Performing demographic analysis...")
+    print("\nPerforming demographic analysis...")
     try:
+        custom_colors = ['#4169E1', '#E74C3C']  # Royal Blue & Red for binary pies
+
         # Gender Distribution
         plt.figure()
         gender_counts = df['gender'].value_counts()
-        plt.pie(gender_counts, labels=gender_counts.index, autopct='%1.1f%%')
+        plt.pie(gender_counts, labels=gender_counts.index, autopct='%1.1f%%', colors=custom_colors)
         plt.title('Gender Distribution')
-        plt.savefig(os.path.join(results_dir, 'gender_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'gender_distribution.png'))
         plt.close()
 
         # Senior Citizen Distribution
         plt.figure()
         senior_counts = df['SeniorCitizen'].value_counts()
-        plt.pie(senior_counts, labels=senior_counts.index, autopct='%1.1f%%')
+        plt.pie(senior_counts, labels=senior_counts.index, autopct='%1.1f%%', colors=custom_colors)
         plt.title('Senior Citizen Distribution')
-        plt.savefig(os.path.join(results_dir, 'senior_citizen_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'seniorcitizen_distribution.png'))
+        plt.close()
+
+        # Partner Distribution
+        plt.figure()
+        counts = df['Partner'].value_counts()
+        plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=custom_colors)
+        plt.title('Partner Distribution')
+        plt.savefig(os.path.join(vis_dir, 'partner_distribution.png'))
+        plt.close()
+
+        # Dependents Distribution
+        plt.figure()
+        counts = df['Dependents'].value_counts()
+        plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=custom_colors)
+        plt.title('Dependents Distribution')
+        plt.savefig(os.path.join(vis_dir, 'dependents_distribution.png'))
         plt.close()
 
         print("Demographic analysis completed and visualizations saved.")
@@ -168,18 +187,19 @@ def demographic_analysis(df, results_dir):
         logging.error(f"Error in demographic analysis: {str(e)}")
         raise
 
-def correlation_analysis(df, results_dir):
+
+def correlation_analysis(df, vis_dir):
     """Perform correlation analysis and save heatmap."""
-    print("\n3. Performing correlation analysis...")
+    print("\nPerforming correlation analysis...")
     try:
         numerical_cols = df.select_dtypes(include=['int64', 'float64']).columns
         correlation_matrix = df[numerical_cols].corr()
-        
+
         plt.figure(figsize=(12, 8))
         sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm', fmt='.2f')
         plt.title('Correlation Matrix of Numerical Features')
         plt.tight_layout()
-        plt.savefig(os.path.join(results_dir, 'correlation_matrix.png'))
+        plt.savefig(os.path.join(vis_dir, 'correlation_matrix.png'))
         plt.close()
 
         print("Correlation analysis completed and heatmap saved.")
@@ -187,63 +207,341 @@ def correlation_analysis(df, results_dir):
         logging.error(f"Error in correlation analysis: {str(e)}")
         raise
 
-def service_usage_analysis(df, results_dir):
-    """Perform service usage analysis and save visualizations."""
-    print("\n4. Performing service usage analysis...")
+
+def internet_service_analysis(df, vis_dir):
+    """Visualizations related to internet service."""
+    print("\nPerforming internet service analysis...")
     try:
+        colors = ['#4169E1', '#E74C3C', '#FF69B4']  # Royal Blue, Red, Pink
+
         # Internet Service Distribution
         plt.figure()
-        internet_counts = df['InternetService'].value_counts()
-        plt.pie(internet_counts, labels=internet_counts.index, autopct='%1.1f%%')
+        counts = df['InternetService'].value_counts()
+        plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=colors)
         plt.title('Internet Service Distribution')
-        plt.savefig(os.path.join(results_dir, 'internet_service_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'internetservice_distribution.png'))
         plt.close()
 
-        # Additional Services Distribution
-        additional_services = ['OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 
-                               'TechSupport', 'StreamingTV', 'StreamingMovies']
-        fig, axes = plt.subplots(2, 3, figsize=(18, 12))
-        for i, service in enumerate(additional_services):
-            row = i // 3
-            col = i % 3
-            sns.countplot(data=df, x=service, ax=axes[row, col])
-            axes[row, col].set_title(f'{service} Distribution')
+        # Internet Service by Senior Citizen (barplot)
+        plt.figure(figsize=(8,6))
+        sns.countplot(x='InternetService', hue='SeniorCitizen', data=df, palette=['#4169E1', '#E74C3C'])
+        plt.title('Internet Service by Senior Citizen')
+        plt.savefig(os.path.join(vis_dir, 'internetservice_senior.png'))
+        plt.close()
+
+        # Internet Service vs Churn
+        plt.figure(figsize=(6, 4))
+        sns.countplot(data=df, x='InternetService', hue='Churn', palette=colors)
+        plt.title('Internet Service vs Churn')
+        plt.savefig(os.path.join(vis_dir, 'internetservice_churn.png'))
+        plt.close()
+
+        print("Internet service visualizations saved.")
+    except Exception as e:
+        logging.error(f"Error in internet service analysis: {str(e)}")
+        raise
+
+def additional_services_churn(df, vis_dir):
+    services = ['OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV', 'StreamingMovies']
+    colors = ['#4169E1', '#E74C3C']  # Blue & Red for churn categories
+
+    for service in services:
+        plt.figure()
+        sns.countplot(data=df, x=service, hue='Churn', palette=colors)
+        plt.title(f'{service} vs Churn')
+        plt.savefig(os.path.join(vis_dir, f'{service.lower()}_churn.png'))
+        plt.close()
+
+def internet_service_senior(df, vis_dir):
+    plt.figure(figsize=(8,6))
+    sns.countplot(x='InternetService', hue='SeniorCitizen', data=df, palette=['#4169E1', '#E74C3C'])
+    plt.title('Internet Service by Senior Citizen')
+    plt.savefig(os.path.join(vis_dir, 'internet_service_senior.png'))
+    plt.close()
+
+def service_usage_analysis(df, vis_dir):
+    """Visualizations for additional services and their relation to churn."""
+    print("\nPerforming service usage analysis...")
+    try:
+        services = ['OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport', 'StreamingTV', 'StreamingMovies']
+        palette = ['#4169E1', '#E74C3C']  # Yes/No colors
+        
+        # Additional Services Distribution (all in one figure)
+        fig, axes = plt.subplots(2, 3, figsize=(18,12))
+        for i, service in enumerate(services):
+            ax = axes[i//3, i%3]
+            sns.countplot(x=service, data=df, palette=palette, ax=ax)
+            ax.set_title(f'{service} Distribution')
         plt.tight_layout()
-        plt.savefig(os.path.join(results_dir, 'additional_services_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'additional_services_distribution.png'))
         plt.close()
 
-        print("Service usage analysis completed and visualizations saved.")
+        # Each Service vs Churn
+        for service in services:
+            plt.figure()
+            sns.countplot(x=service, hue='Churn', data=df, palette=palette)
+            plt.title(f'{service} vs Churn')
+            plt.savefig(os.path.join(vis_dir, f'{service.lower()}_churn.png'))
+            plt.close()
+
+        print("Service usage visualizations saved.")
     except Exception as e:
         logging.error(f"Error in service usage analysis: {str(e)}")
         raise
 
-def payment_analysis(df, results_dir):
-    """Perform payment analysis and save visualizations."""
-    print("\n5. Performing payment analysis...")
+def online_backup_distribution(df, vis_dir):
+    plt.figure()
+    sns.countplot(x='OnlineBackup', data=df, palette=['#4169E1', '#E74C3C'])
+    plt.title('Online Backup Distribution')
+    plt.savefig(os.path.join(vis_dir, 'OnlineBackup_distribution.png'))
+    plt.close()
+
+def online_security_distribution(df, vis_dir):
+    plt.figure()
+    sns.countplot(x='OnlineSecurity', data=df, palette=['#4169E1', '#E74C3C'])
+    plt.title('Online Security Distribution')
+    plt.savefig(os.path.join(vis_dir, 'OnlineSecurity_distribution.png'))
+    plt.close()
+
+
+def payment_and_contract_analysis(df, vis_dir):
+    """Visualizations for payment methods and contract types."""
+    print("\nPerforming payment and contract analysis...")
     try:
+        colors_4 = ['#4169E1', '#E74C3C', '#FF69B4', '#2ECC71']  # Blue, Red, Pink, Green
+        colors_3 = ['#4169E1', '#E74C3C', '#FF69B4']
+
         # Payment Method Distribution
         plt.figure()
-        payment_counts = df['PaymentMethod'].value_counts()
-        plt.pie(payment_counts, labels=payment_counts.index, autopct='%1.1f%%')
+        counts = df['PaymentMethod'].value_counts()
+        plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=colors_4)
         plt.title('Payment Method Distribution')
-        plt.savefig(os.path.join(results_dir, 'payment_method_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'paymentmethod_distribution.png'))
+        plt.close()
+
+        # Payment Method by Gender
+        plt.figure(figsize=(8,6))
+        sns.countplot(x='PaymentMethod', hue='gender', data=df, palette=['#4169E1', '#E74C3C'])
+        plt.title('Payment Method by Gender')
+        plt.savefig(os.path.join(vis_dir, 'paymentmethod_gender.png'))
         plt.close()
 
         # Contract Type Distribution
         plt.figure()
-        contract_counts = df['Contract'].value_counts()
-        plt.pie(contract_counts, labels=contract_counts.index, autopct='%1.1f%%')
+        counts = df['Contract'].value_counts()
+        plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=colors_3)
         plt.title('Contract Type Distribution')
-        plt.savefig(os.path.join(results_dir, 'contract_type_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'contract_distribution.png'))
         plt.close()
 
-        print("Payment analysis completed and visualizations saved.")
+        # Contract by Partner status
+        plt.figure(figsize=(10,6))
+        sns.countplot(x='Contract', hue='Partner', data=df, palette=['#4169E1', '#E74C3C'])
+        plt.title('Contract Type by Partner Status')
+        plt.savefig(os.path.join(vis_dir, 'contract_demographics.png'))
+        plt.close()
+
+        # Payment Method by Gender
+        plt.figure(figsize=(8,6))
+        sns.countplot(x='PaymentMethod', hue='gender', data=df, palette=['#4169E1', '#E74C3C'])
+        plt.title('Payment Method by Gender')
+        plt.savefig(os.path.join(vis_dir, 'payment_method_gender.png'))
+        plt.close()
+
+        print("Payment and contract visualizations saved.")
     except Exception as e:
-        logging.error(f"Error in payment analysis: {str(e)}")
+        logging.error(f"Error in payment and contract analysis: {str(e)}")
         raise
 
+
+def churn_related_analysis(df, vis_dir):
+    """Visualizations related directly to churn and some distributions."""
+    print("\nPerforming churn-related analysis...")
+    try:
+        pie_colors_2 = ['#0600b0', '#e30517']  # Royal blue, red
+        pie_colors_3 = ['#0600b0', '#e30517', '#e805b3']
+
+        # Churn Distribution
+        plt.figure()
+        df['Churn'].value_counts().plot.pie(autopct='%1.1f%%', colors=pie_colors_2)
+        plt.title('Churn Distribution')
+        plt.ylabel('')
+        plt.savefig(os.path.join(vis_dir, 'churn_distribution.png'))
+        plt.close()
+
+        # Gender vs Churn
+        plt.figure(figsize=(6, 4))
+        sns.countplot(x='gender', hue='Churn', data=df, palette=pie_colors_2)
+        plt.title('Gender vs Churn')
+        plt.savefig(os.path.join(vis_dir, 'gender_churn.png'))
+        plt.close()
+
+        # Senior Citizen vs Churn
+        plt.figure(figsize=(6, 4))
+        sns.countplot(x='SeniorCitizen', hue='Churn', data=df, palette=pie_colors_2)
+        plt.title('Senior Citizen vs Churn')
+        plt.savefig(os.path.join(vis_dir, 'seniorcitizen_churn.png'))
+        plt.close()
+
+        # Payment Method vs Churn
+        plt.figure(figsize=(8, 4))
+        sns.countplot(x='PaymentMethod', hue='Churn', data=df, palette=['#4169E1', '#E74C3C', '#FF69B4', '#2ECC71'])
+        plt.title('Payment Method vs Churn')
+        plt.xticks(rotation=30, ha='right')
+        plt.tight_layout()
+        plt.savefig(os.path.join(vis_dir, 'paymentmethod_churn.png'))
+        plt.close()
+
+        # Partner and Dependents vs Churn (side by side)
+        fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+        sns.countplot(x='Partner', hue='Churn', data=df, ax=axes[0], palette=pie_colors_2)
+        axes[0].set_title('Partner vs Churn')
+        sns.countplot(x='Dependents', hue='Churn', data=df, ax=axes[1], palette=pie_colors_2)
+        axes[1].set_title('Dependents vs Churn')
+        plt.tight_layout()
+        plt.savefig(os.path.join(vis_dir, 'partner_dependents_churn.png'))
+        plt.close()
+
+        # Tenure Distribution by Churn
+        plt.figure(figsize=(8, 5))
+        sns.histplot(x='tenure', hue='Churn', data=df, multiple='stack', bins=30, palette=pie_colors_2)
+        plt.title('Tenure Distribution by Churn')
+        plt.xlabel('Tenure (Months)')
+        plt.ylabel('Number of Customers')
+        plt.tight_layout()
+        plt.savefig(os.path.join(vis_dir, 'tenure_distribution.png'))
+        plt.close()
+
+        # Monthly Charges Distribution by Churn (KDE)
+        plt.figure(figsize=(8, 5))
+        sns.kdeplot(x='MonthlyCharges', hue='Churn', data=df, fill=True, common_norm=False, palette=pie_colors_2)
+        plt.title('Monthly Charges Distribution by Churn')
+        plt.xlabel('Monthly Charges')
+        plt.ylabel('Density')
+        plt.tight_layout()
+        plt.savefig(os.path.join(vis_dir, 'monthlycharges_churn_kde.png'))
+        plt.close()
+
+        # Total Charges Distribution by Churn (KDE)
+        plt.figure(figsize=(8, 5))
+        sns.kdeplot(x='TotalCharges', hue='Churn', data=df, fill=True, common_norm=False, palette=pie_colors_2)
+        plt.title('Total Charges Distribution by Churn')
+        plt.xlabel('Total Charges')
+        plt.ylabel('Density')
+        plt.tight_layout()
+        plt.savefig(os.path.join(vis_dir, 'totalcharges_churn_kde.png'))
+        plt.close()
+
+        # Violin Plots: Monthly Charges & Tenure by Churn
+        plt.figure(figsize=(7, 5))
+        sns.violinplot(x='Churn', y='MonthlyCharges', data=df, palette=pie_colors_2)
+        plt.title('Monthly Charges by Churn (Violin Plot)')
+        plt.tight_layout()
+        plt.savefig(os.path.join(vis_dir, 'monthlycharges_violin.png'))
+        plt.close()
+
+        plt.figure(figsize=(7, 5))
+        sns.violinplot(x='Churn', y='tenure', data=df, palette=pie_colors_2)
+        plt.title('Tenure by Churn (Violin Plot)')
+        plt.tight_layout()
+        plt.savefig(os.path.join(vis_dir, 'tenure_violin.png'))
+        plt.close()
+
+        print("Churn-related visualizations saved.")
+    except Exception as e:
+        logging.error(f"Error in churn-related analysis: {str(e)}")
+        raise
+
+
+def other_distributions(df, vis_dir):
+    """Other distributions for categorical features."""
+    print("\nPerforming other distributions analysis...")
+    try:
+        # Monthly Charges Distribution (Histogram + KDE)
+        plt.figure(figsize=(8,6))
+        sns.histplot(df['MonthlyCharges'], kde=True, color='#4169E1')
+        plt.title('Monthly Charges Distribution')
+        plt.savefig(os.path.join(vis_dir, 'monthlycharges_distribution.png'))
+        plt.close()
+
+        # Total Charges Distribution (Histogram + KDE)
+        plt.figure(figsize=(8,6))
+        sns.histplot(df['TotalCharges'], kde=True, color='#E74C3C')
+        plt.title('Total Charges Distribution')
+        plt.savefig(os.path.join(vis_dir, 'totalcharges_distribution.png'))
+        plt.close()
+
+        # Multiple Lines Distribution (Pie)
+        plt.figure()
+        counts = df['MultipleLines'].value_counts()
+        plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=['#4169E1', '#E74C3C', '#FF69B4'])
+        plt.title('Multiple Lines Distribution')
+        plt.savefig(os.path.join(vis_dir, 'multiplelines_distribution.png'))
+        plt.close()
+
+        # Paperless Billing Distribution (Pie)
+        plt.figure()
+        counts = df['PaperlessBilling'].value_counts()
+        plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=['#4169E1', '#E74C3C'])
+        plt.title('Paperless Billing Distribution')
+        plt.savefig(os.path.join(vis_dir, 'paperlessbilling_distribution.png'))
+        plt.close()
+
+        # Partner and Dependents Distribution (Countplot with hue)
+        plt.figure()
+        sns.countplot(x='Partner', hue='Dependents', data=df, palette=['#4169E1', '#E74C3C'])
+        plt.title('Partner and Dependents Distribution')
+        plt.savefig(os.path.join(vis_dir, 'partner_dependents_distribution.png'))
+        plt.close()
+
+        # Phone Service Distribution (Pie)
+        plt.figure()
+        counts = df['PhoneService'].value_counts()
+        plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=['#4169E1', '#E74C3C'])
+        plt.title('Phone Service Distribution')
+        plt.savefig(os.path.join(vis_dir, 'phoneservice_distribution.png'))
+        plt.close()
+
+        # Streaming TV Distribution (Pie)
+        plt.figure()
+        counts = df['StreamingTV'].value_counts()
+        plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=['#4169E1', '#E74C3C'])
+        plt.title('Streaming TV Distribution')
+        plt.savefig(os.path.join(vis_dir, 'streamingtv_distribution.png'))
+        plt.close()
+
+        # Streaming Movies Distribution (Pie)
+        plt.figure()
+        counts = df['StreamingMovies'].value_counts()
+        plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=['#4169E1', '#E74C3C'])
+        plt.title('Streaming Movies Distribution')
+        plt.savefig(os.path.join(vis_dir, 'streamingmovies_distribution.png'))
+        plt.close()
+
+        # Tech Support Distribution (Pie)
+        plt.figure()
+        counts = df['TechSupport'].value_counts()
+        plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=['#4169E1', '#E74C3C'])
+        plt.title('Tech Support Distribution')
+        plt.savefig(os.path.join(vis_dir, 'techsupport_distribution.png'))
+        plt.close()
+
+        # Device Protection Distribution (Pie)
+        plt.figure()
+        counts = df['DeviceProtection'].value_counts()
+        plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=['#4169E1', '#E74C3C'])
+        plt.title('Device Protection Distribution')
+        plt.savefig(os.path.join(vis_dir, 'deviceprotection_distribution.png'))
+        plt.close()
+
+        print("Other distributions saved.")
+    except Exception as e:
+        logging.error(f"Error in other distributions analysis: {str(e)}")
+        raise
+
+
 def prepare_features(df):
-    """Prepare features and target variable."""
+    """Prepare features and target variable using SelectKBest for feature selection."""
     print("\n2. Preparing features and target variable...")
     try:
         # Map Churn to binary (Yes=1, No=0)
@@ -254,55 +552,43 @@ def prepare_features(df):
         existing_columns_to_drop = [col for col in columns_to_drop if col in df.columns]
         X = df.drop(existing_columns_to_drop, axis=1)
         
-        # One-hot encoding
+        # One-hot encoding for categorical features
         X_encoded = pd.get_dummies(X)
         print(f"Number of features after encoding: {X_encoded.shape[1]}")
         
-        # Drop low-variance columns
+        # Drop low-variance columns (columns with only 1 unique value)
         low_variance_cols = [col for col in X_encoded.columns if X_encoded[col].nunique() == 1]
         X_encoded = X_encoded.drop(columns=low_variance_cols)
         print(f"Number of features after dropping low-variance columns: {X_encoded.shape[1]}")
-        
-        # Split the data
+
+        # Split into train and test sets
         X_train, X_test, y_train, y_test = train_test_split(
             X_encoded, y, test_size=0.2, random_state=42
         )
-        
-        # Scaling features ensures all numerical values are on the same scale, improving model performance.
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train)
-        X_test_scaled = scaler.transform(X_test)
-        
-        # Perform feature selection
-        print("\nPerforming feature selection...")
-        model = RandomForestClassifier(random_state=42)
-        rfe = RFE(model, n_features_to_select=10)  # Select top 10 features
-        rfe.fit(X_train_scaled, y_train)
-        selected_indices = rfe.get_support(indices=True)
-        selected_feature_names = X_encoded.columns[selected_indices].tolist()
-        X_train_selected = rfe.fit_transform(X_train_scaled, y_train)
-        X_test_selected = rfe.transform(X_test_scaled)  # Transform test set using fitted selector
-        
-        print(f"Selected features: {rfe.get_support(indices=True)}")
 
+        # Feature selection with SelectKBest (using chi2)
+        print("\nSelecting top features with SelectKBest...")
+        selector = SelectKBest(score_func=chi2, k=20)
+        X_train_selected = selector.fit_transform(X_train, y_train)
+        X_test_selected = selector.transform(X_test)
+        
+        # Get selected feature names
+        selected_feature_names = X_train.columns[selector.get_support()].tolist()
+        print(f"Top selected features: {selected_feature_names}")
+
+        # Apply SMOTE on selected features to balance classes
         smote = SMOTE(random_state=42)
         X_train_resampled, y_train_resampled = smote.fit_resample(X_train_selected, y_train)
 
-        return X_train_resampled, X_test_selected, y_train_resampled, y_test, selected_feature_names
-    
+        # **Important: Convert resampled numpy array back to DataFrame with column names**
+        X_train_resampled_df = pd.DataFrame(X_train_resampled, columns=selected_feature_names)
+
+        # Return DataFrame for train, numpy array for test (or convert test similarly if needed)
+        return X_train_resampled_df, X_test_selected, y_train_resampled, y_test, selected_feature_names
+
     except Exception as e:
         logging.error(f"Error preparing features: {str(e)}")
         raise
-
-def select_features(X_train, y_train):
-    """Perform Recursive Feature Elimination (RFE) for feature selection."""
-    print("\nPerforming feature selection...")
-    model = RandomForestClassifier(random_state=42)
-    rfe = RFE(model, n_features_to_select=10)  # Select top 10 features
-    X_train_selected = rfe.fit_transform(X_train, y_train)
-    selected_features = rfe.get_support(indices=True)
-    print(f"Selected features: {selected_features}")
-    return X_train_selected
 
 
 def train_models(X_train, X_test, y_train, y_test):
@@ -328,7 +614,7 @@ def train_models(X_train, X_test, y_train, y_test):
         },
         'SVM': {
             'C': [0.1, 1, 10],
-            'kernel': ['rbf', 'linear'],
+            'kernel': ['linear'],
             'gamma': ['scale', 'auto']
         },
         'Gradient Boosting': {
@@ -624,11 +910,24 @@ def main():
         # Load and preprocess data
         df = load_and_preprocess_data(data_path)
 
-        # Perform EDA and save visualizations
-        demographic_analysis(df, results_dir)
-        correlation_analysis(df, results_dir)
-        service_usage_analysis(df, results_dir)
-        payment_analysis(df, results_dir)
+        # Create the directory to save visualizations
+        base_dir = os.path.dirname(os.path.abspath(__file__))  # path to ml_analysis.py folder
+        vis_dir = os.path.join(base_dir, 'visualizations')
+
+        os.makedirs(vis_dir, exist_ok=True)
+
+        # Call the visualization functions
+        demographic_analysis(df, vis_dir)
+        correlation_analysis(df, vis_dir)
+        internet_service_analysis(df, vis_dir)
+        service_usage_analysis(df, vis_dir)
+        payment_and_contract_analysis(df, vis_dir)
+        churn_related_analysis(df, vis_dir)
+        other_distributions(df, vis_dir)
+        additional_services_churn(df, vis_dir)
+        online_backup_distribution(df, vis_dir)
+        online_security_distribution(df, vis_dir) 
+        internet_service_senior(df, vis_dir)
 
         # Prepare features
         X_train, X_test, y_train, y_test, selected_feature_names = prepare_features(df)

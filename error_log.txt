@@ -79,3 +79,5 @@
 2025-07-07 18:22:19,540 - ERROR - Error plotting ROC for AdaBoost: This AdaBoostClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
 2025-07-07 18:22:19,540 - ERROR - Error plotting ROC for Neural Network: This MLPClassifier instance is not fitted yet. Call 'fit' with appropriate arguments before using this estimator.
 2025-07-07 22:15:27,346 - ERROR - Error in main execution: too many values to unpack (expected 4)
+2025-07-07 23:45:57,598 - ERROR - Error in main execution: [Errno 30] Read-only file system: '/visualizations'
+2025-07-09 15:39:40,747 - ERROR - Error creating ensemble: 'LogisticRegression' object is not subscriptable
