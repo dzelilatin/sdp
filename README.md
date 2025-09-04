@@ -128,7 +128,7 @@ This project is open source and available under the MIT License.
 
 ## Contact
 
-For questions or feedback, feel free to reach out at [your-email@example.com].
+For questions or feedback, feel free to reach out at [dzelila.tinjak@stu.ibu.edu.ba].
 
 ## Quick Demo (Load-only Mode)
 
