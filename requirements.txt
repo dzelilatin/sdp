@@ -4,4 +4,8 @@ seaborn>=0.11.0
 matplotlib>=3.4.0
 scikit-learn
 xgboost
-jupyter 
+jupyter
+streamlit
+imbalanced-learn
+shap
+pytest 

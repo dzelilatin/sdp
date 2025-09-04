@@ -6,8 +6,12 @@ from xgboost import XGBClassifier
 matplotlib.use('Agg')  # Use non-interactive backend
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split, GridSearchCV, StratifiedKFold
+from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from sklearn.compose import ColumnTransformer
+from sklearn.impute import SimpleImputer
+from sklearn.pipeline import Pipeline as SkPipeline
+from sklearn.feature_selection import SelectKBest, mutual_info_classif
 from sklearn.linear_model import LogisticRegression, RidgeClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.svm import SVC
@@ -28,6 +32,10 @@ import sqlite3
 import warnings
 warnings.filterwarnings("ignore")
 import json
+from sklearn.inspection import permutation_importance
+from sklearn.calibration import CalibratedClassifierCV
+from sklearn.metrics import fbeta_score, roc_auc_score, average_precision_score
+from imblearn.pipeline import Pipeline as ImbPipeline
 
 
 # Configure logging to write errors to a file
@@ -67,9 +75,17 @@ def initialize_database():
             input_data TEXT,
             prediction INTEGER,
             model_name TEXT,
+            proba REAL,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     ''')
+    
+    # Try to add proba column if missing (safe migration)
+    try:
+        cursor.execute('ALTER TABLE predictions ADD COLUMN proba REAL')
+    except sqlite3.OperationalError:
+        pass
+
     conn.commit()
     conn.close()
     print("Database initialized.")
@@ -94,6 +110,23 @@ def save_prediction(input_data, prediction, model_name, column_names):
     conn.commit()
     conn.close()
     print("Prediction saved to database.")
+
+def save_prediction_streamlit(input_dict, prediction, proba):
+    """Save a Streamlit prediction (dict inputs) with probability to the database."""
+    db_path = os.path.join('ml_results', 'predictions.db')
+    os.makedirs('ml_results', exist_ok=True)
+
+    input_data_json = json.dumps(input_dict)
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO predictions (input_data, prediction, model_name, proba)
+        VALUES (?, ?, ?, ?)
+    ''', (input_data_json, int(prediction), 'Ensemble', float(proba)))
+    conn.commit()
+    conn.close()
+    print("Prediction saved to database (Streamlit helper).")
 
 def get_prediction_history():
     """Retrieve all predictions from the database."""
@@ -163,7 +196,7 @@ def demographic_analysis(df, vis_dir):
         senior_counts = df['SeniorCitizen'].value_counts()
         plt.pie(senior_counts, labels=senior_counts.index, autopct='%1.1f%%', colors=custom_colors)
         plt.title('Senior Citizen Distribution')
-        plt.savefig(os.path.join(vis_dir, 'seniorcitizen_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'senior_citizen_distribution.png'))
         plt.close()
 
         # Partner Distribution
@@ -219,21 +252,21 @@ def internet_service_analysis(df, vis_dir):
         counts = df['InternetService'].value_counts()
         plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=colors)
         plt.title('Internet Service Distribution')
-        plt.savefig(os.path.join(vis_dir, 'internetservice_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'internet_service_distribution.png'))
         plt.close()
 
         # Internet Service by Senior Citizen (barplot)
         plt.figure(figsize=(8,6))
         sns.countplot(x='InternetService', hue='SeniorCitizen', data=df, palette=['#4169E1', '#E74C3C'])
         plt.title('Internet Service by Senior Citizen')
-        plt.savefig(os.path.join(vis_dir, 'internetservice_senior.png'))
+        plt.savefig(os.path.join(vis_dir, 'internet_service_senior.png'))
         plt.close()
 
         # Internet Service vs Churn
         plt.figure(figsize=(6, 4))
         sns.countplot(data=df, x='InternetService', hue='Churn', palette=colors)
         plt.title('Internet Service vs Churn')
-        plt.savefig(os.path.join(vis_dir, 'internetservice_churn.png'))
+        plt.savefig(os.path.join(vis_dir, 'internet_service_churn.png'))
         plt.close()
 
         print("Internet service visualizations saved.")
@@ -293,14 +326,14 @@ def online_backup_distribution(df, vis_dir):
     plt.figure()
     sns.countplot(x='OnlineBackup', data=df, palette=['#4169E1', '#E74C3C'])
     plt.title('Online Backup Distribution')
-    plt.savefig(os.path.join(vis_dir, 'OnlineBackup_distribution.png'))
+    plt.savefig(os.path.join(vis_dir, 'online_backup_distribution.png'))
     plt.close()
 
 def online_security_distribution(df, vis_dir):
     plt.figure()
     sns.countplot(x='OnlineSecurity', data=df, palette=['#4169E1', '#E74C3C'])
     plt.title('Online Security Distribution')
-    plt.savefig(os.path.join(vis_dir, 'OnlineSecurity_distribution.png'))
+    plt.savefig(os.path.join(vis_dir, 'online_security_distribution.png'))
     plt.close()
 
 
@@ -316,14 +349,14 @@ def payment_and_contract_analysis(df, vis_dir):
         counts = df['PaymentMethod'].value_counts()
         plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=colors_4)
         plt.title('Payment Method Distribution')
-        plt.savefig(os.path.join(vis_dir, 'paymentmethod_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'payment_method_distribution.png'))
         plt.close()
 
         # Payment Method by Gender
         plt.figure(figsize=(8,6))
         sns.countplot(x='PaymentMethod', hue='gender', data=df, palette=['#4169E1', '#E74C3C'])
         plt.title('Payment Method by Gender')
-        plt.savefig(os.path.join(vis_dir, 'paymentmethod_gender.png'))
+        plt.savefig(os.path.join(vis_dir, 'payment_method_gender.png'))
         plt.close()
 
         # Contract Type Distribution
@@ -380,7 +413,7 @@ def churn_related_analysis(df, vis_dir):
         plt.figure(figsize=(6, 4))
         sns.countplot(x='SeniorCitizen', hue='Churn', data=df, palette=pie_colors_2)
         plt.title('Senior Citizen vs Churn')
-        plt.savefig(os.path.join(vis_dir, 'seniorcitizen_churn.png'))
+        plt.savefig(os.path.join(vis_dir, 'senior_citizen_churn.png'))
         plt.close()
 
         # Payment Method vs Churn
@@ -389,7 +422,7 @@ def churn_related_analysis(df, vis_dir):
         plt.title('Payment Method vs Churn')
         plt.xticks(rotation=30, ha='right')
         plt.tight_layout()
-        plt.savefig(os.path.join(vis_dir, 'paymentmethod_churn.png'))
+        plt.savefig(os.path.join(vis_dir, 'payment_method_churn.png'))
         plt.close()
 
         # Partner and Dependents vs Churn (side by side)
@@ -419,7 +452,7 @@ def churn_related_analysis(df, vis_dir):
         plt.xlabel('Monthly Charges')
         plt.ylabel('Density')
         plt.tight_layout()
-        plt.savefig(os.path.join(vis_dir, 'monthlycharges_churn_kde.png'))
+        plt.savefig(os.path.join(vis_dir, 'monthly_charges_churn_kde.png'))
         plt.close()
 
         # Total Charges Distribution by Churn (KDE)
@@ -429,7 +462,7 @@ def churn_related_analysis(df, vis_dir):
         plt.xlabel('Total Charges')
         plt.ylabel('Density')
         plt.tight_layout()
-        plt.savefig(os.path.join(vis_dir, 'totalcharges_churn_kde.png'))
+        plt.savefig(os.path.join(vis_dir, 'total_charges_churn_kde.png'))
         plt.close()
 
         # Violin Plots: Monthly Charges & Tenure by Churn
@@ -437,7 +470,7 @@ def churn_related_analysis(df, vis_dir):
         sns.violinplot(x='Churn', y='MonthlyCharges', data=df, palette=pie_colors_2)
         plt.title('Monthly Charges by Churn (Violin Plot)')
         plt.tight_layout()
-        plt.savefig(os.path.join(vis_dir, 'monthlycharges_violin.png'))
+        plt.savefig(os.path.join(vis_dir, 'monthly_charges_violin.png'))
         plt.close()
 
         plt.figure(figsize=(7, 5))
@@ -461,14 +494,14 @@ def other_distributions(df, vis_dir):
         plt.figure(figsize=(8,6))
         sns.histplot(df['MonthlyCharges'], kde=True, color='#4169E1')
         plt.title('Monthly Charges Distribution')
-        plt.savefig(os.path.join(vis_dir, 'monthlycharges_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'monthly_charges_distribution.png'))
         plt.close()
 
         # Total Charges Distribution (Histogram + KDE)
         plt.figure(figsize=(8,6))
         sns.histplot(df['TotalCharges'], kde=True, color='#E74C3C')
         plt.title('Total Charges Distribution')
-        plt.savefig(os.path.join(vis_dir, 'totalcharges_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'total_charges_distribution.png'))
         plt.close()
 
         # Multiple Lines Distribution (Pie)
@@ -476,7 +509,7 @@ def other_distributions(df, vis_dir):
         counts = df['MultipleLines'].value_counts()
         plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=['#4169E1', '#E74C3C', '#FF69B4'])
         plt.title('Multiple Lines Distribution')
-        plt.savefig(os.path.join(vis_dir, 'multiplelines_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'multiple_lines_distribution.png'))
         plt.close()
 
         # Paperless Billing Distribution (Pie)
@@ -484,7 +517,7 @@ def other_distributions(df, vis_dir):
         counts = df['PaperlessBilling'].value_counts()
         plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=['#4169E1', '#E74C3C'])
         plt.title('Paperless Billing Distribution')
-        plt.savefig(os.path.join(vis_dir, 'paperlessbilling_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'paperless_billing_distribution.png'))
         plt.close()
 
         # Partner and Dependents Distribution (Countplot with hue)
@@ -499,7 +532,7 @@ def other_distributions(df, vis_dir):
         counts = df['PhoneService'].value_counts()
         plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=['#4169E1', '#E74C3C'])
         plt.title('Phone Service Distribution')
-        plt.savefig(os.path.join(vis_dir, 'phoneservice_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'phone_service_distribution.png'))
         plt.close()
 
         # Streaming TV Distribution (Pie)
@@ -507,7 +540,7 @@ def other_distributions(df, vis_dir):
         counts = df['StreamingTV'].value_counts()
         plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=['#4169E1', '#E74C3C'])
         plt.title('Streaming TV Distribution')
-        plt.savefig(os.path.join(vis_dir, 'streamingtv_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'streaming_tv_distribution.png'))
         plt.close()
 
         # Streaming Movies Distribution (Pie)
@@ -515,7 +548,7 @@ def other_distributions(df, vis_dir):
         counts = df['StreamingMovies'].value_counts()
         plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=['#4169E1', '#E74C3C'])
         plt.title('Streaming Movies Distribution')
-        plt.savefig(os.path.join(vis_dir, 'streamingmovies_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'streaming_movies_distribution.png'))
         plt.close()
 
         # Tech Support Distribution (Pie)
@@ -523,7 +556,7 @@ def other_distributions(df, vis_dir):
         counts = df['TechSupport'].value_counts()
         plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=['#4169E1', '#E74C3C'])
         plt.title('Tech Support Distribution')
-        plt.savefig(os.path.join(vis_dir, 'techsupport_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'tech_support_distribution.png'))
         plt.close()
 
         # Device Protection Distribution (Pie)
@@ -531,7 +564,7 @@ def other_distributions(df, vis_dir):
         counts = df['DeviceProtection'].value_counts()
         plt.pie(counts, labels=counts.index, autopct='%1.1f%%', colors=['#4169E1', '#E74C3C'])
         plt.title('Device Protection Distribution')
-        plt.savefig(os.path.join(vis_dir, 'deviceprotection_distribution.png'))
+        plt.savefig(os.path.join(vis_dir, 'device_protection_distribution.png'))
         plt.close()
 
         print("Other distributions saved.")
@@ -541,70 +574,191 @@ def other_distributions(df, vis_dir):
 
 
 def prepare_features(df):
-    """Prepare features and target variable using SelectKBest for feature selection."""
+    """Prepare features and target variable using robust preprocessing and feature selection.
+
+    Returns:
+    - X_train_resampled_df: DataFrame of selected features after SMOTE
+    - X_test_selected: numpy array of selected features for test set
+    - y_train_resampled, y_test
+    - selected_feature_names: names of selected features
+    - preprocessor: fitted ColumnTransformer
+    - selector: fitted SelectKBest
+    - X_train_selected_df_pre_smote: DataFrame of selected features before SMOTE
+    - y_train_pre: y_train before SMOTE
+    """
     print("\n2. Preparing features and target variable...")
     try:
         # Map Churn to binary (Yes=1, No=0)
         y = df['Churn'].map({'Yes': 1, 'No': 0})
-        
-        # Columns to drop (only drop if they exist)
-        columns_to_drop = ['customerID', 'Churn', 'Race', 'Gender']
-        existing_columns_to_drop = [col for col in columns_to_drop if col in df.columns]
-        X = df.drop(existing_columns_to_drop, axis=1)
-        
-        # One-hot encoding for categorical features
-        X_encoded = pd.get_dummies(X)
-        print(f"Number of features after encoding: {X_encoded.shape[1]}")
-        
-        # Drop low-variance columns (columns with only 1 unique value)
-        low_variance_cols = [col for col in X_encoded.columns if X_encoded[col].nunique() == 1]
-        X_encoded = X_encoded.drop(columns=low_variance_cols)
-        print(f"Number of features after dropping low-variance columns: {X_encoded.shape[1]}")
 
-        # Split into train and test sets
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_encoded, y, test_size=0.2, random_state=42
+        # Drop non-predictive or sensitive columns if present
+        columns_to_drop = ['customerID']
+        existing_columns_to_drop = [col for col in columns_to_drop if col in df.columns]
+        X = df.drop(existing_columns_to_drop + ['Churn'], axis=1)
+
+        # Coerce TotalCharges if exists and has non-numeric entries
+        if 'TotalCharges' in X.columns:
+            with np.errstate(invalid='ignore'):
+                X['TotalCharges'] = pd.to_numeric(X['TotalCharges'], errors='coerce')
+
+        # Add simple interaction feature
+        if 'MonthlyCharges' in X.columns and 'tenure' in X.columns:
+            with np.errstate(divide='ignore', invalid='ignore'):
+                X['MonthlyChargesPerTenure'] = X['MonthlyCharges'] / (X['tenure'].replace(0, np.nan))
+                X['MonthlyChargesPerTenure'] = X['MonthlyChargesPerTenure'].replace([np.inf, -np.inf], np.nan)
+
+        # Identify column types
+        categorical_cols = [c for c in X.columns if X[c].dtype == 'object' or str(X[c].dtype).startswith('category')]
+        numeric_cols = [c for c in X.columns if c not in categorical_cols]
+
+        # Pipelines for preprocessing
+        numeric_transformer = SkPipeline(steps=[
+            ('imputer', SimpleImputer(strategy='median')),
+            ('scaler', StandardScaler())
+        ])
+
+        categorical_transformer = SkPipeline(steps=[
+            ('imputer', SimpleImputer(strategy='most_frequent')),
+            ('encoder', OneHotEncoder(handle_unknown='ignore', sparse_output=False))
+        ])
+
+        preprocessor = ColumnTransformer(
+            transformers=[
+                ('num', numeric_transformer, numeric_cols),
+                ('cat', categorical_transformer, categorical_cols)
+            ]
         )
 
-        # Feature selection with SelectKBest (using chi2)
-        print("\nSelecting top features with SelectKBest...")
-        selector = SelectKBest(score_func=chi2, k=20)
-        X_train_selected = selector.fit_transform(X_train, y_train)
-        X_test_selected = selector.transform(X_test)
-        
+        # Stratified split
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y
+        )
+
+        # Fit and transform
+        X_train_processed = preprocessor.fit_transform(X_train)
+        X_test_processed = preprocessor.transform(X_test)
+
+        # Build feature names
+        feature_names = []
+        feature_names.extend(numeric_cols)
+        try:
+            ohe = preprocessor.named_transformers_['cat'].named_steps['encoder']
+            ohe_names = ohe.get_feature_names_out(categorical_cols).tolist()
+        except Exception:
+            ohe = preprocessor.named_transformers_['cat'].named_steps['encoder']
+            ohe_names = [f"{col}_{i}" for col in categorical_cols for i in range(len(ohe.categories_[categorical_cols.index(col)]))]
+        feature_names.extend(ohe_names)
+
+        # Feature selection with mutual information
+        print("\nSelecting top features with mutual information...")
+        k = min(20, X_train_processed.shape[1])
+        selector = SelectKBest(score_func=mutual_info_classif, k=k)
+        X_train_selected = selector.fit_transform(X_train_processed, y_train)
+        X_test_selected = selector.transform(X_test_processed)
+
         # Get selected feature names
-        selected_feature_names = X_train.columns[selector.get_support()].tolist()
+        selected_feature_names = [name for name, keep in zip(feature_names, selector.get_support()) if keep]
         print(f"Top selected features: {selected_feature_names}")
 
-        # Apply SMOTE on selected features to balance classes
+        # Pre-SMOTE DataFrame
+        X_train_selected_df_pre_smote = pd.DataFrame(X_train_selected, columns=selected_feature_names)
+        y_train_pre = y_train.reset_index(drop=True)
+
+        # Apply SMOTE on selected features to balance classes (legacy path)
         smote = SMOTE(random_state=42)
         X_train_resampled, y_train_resampled = smote.fit_resample(X_train_selected, y_train)
 
-        # **Important: Convert resampled numpy array back to DataFrame with column names**
+        # Convert resampled numpy array back to DataFrame with column names
         X_train_resampled_df = pd.DataFrame(X_train_resampled, columns=selected_feature_names)
 
-        # Return DataFrame for train, numpy array for test (or convert test similarly if needed)
-        return X_train_resampled_df, X_test_selected, y_train_resampled, y_test, selected_feature_names
+        return X_train_resampled_df, X_test_selected, y_train_resampled, y_test, selected_feature_names, preprocessor, selector, X_train_selected_df_pre_smote, y_train_pre
 
     except Exception as e:
         logging.error(f"Error preparing features: {str(e)}")
         raise
 
+def transform_new_data(raw_df, preprocessor, selector, expected_feature_names):
+    """Transform raw input dataframe using fitted preprocessor and selector to match training features.
+    Applies the same light feature engineering and sanitization as training.
+    """
+    df = raw_df.copy()
+    # Sanitize categories
+    for col in df.columns:
+        if df[col].dtype == object:
+            df[col] = df[col].replace({"": np.nan}).astype(str)
+            df[col] = df[col].replace({"nan": np.nan})
+    # Normalize SeniorCitizen to 'Yes'/'No' if present
+    if 'SeniorCitizen' in df.columns:
+        df['SeniorCitizen'] = df['SeniorCitizen'].apply(lambda x: 'Yes' if str(x).strip().lower() in ['1', 'yes', 'true'] else 'No')
+    # Add interaction feature if appropriate (ensure numeric coercion first)
+    # Detect numeric columns from preprocessor
+    numeric_cols = []
+    for name, trans, cols in getattr(preprocessor, 'transformers_', []):
+        if name == 'num':
+            numeric_cols = cols
+            break
+    # Coerce numeric cols to numeric
+    for c in numeric_cols:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors='coerce')
+    # Interaction feature
+    if 'MonthlyCharges' in df.columns and 'tenure' in df.columns:
+        with np.errstate(divide='ignore', invalid='ignore'):
+            df['MonthlyChargesPerTenure'] = df['MonthlyCharges'] / (df['tenure'].replace(0, np.nan))
+            df['MonthlyChargesPerTenure'] = df['MonthlyChargesPerTenure'].replace([np.inf, -np.inf], np.nan)
+    if 'MonthlyChargesPerTenure' not in df.columns:
+        df['MonthlyChargesPerTenure'] = np.nan
+    # Apply preprocessor and selector
+    processed = preprocessor.transform(df)
+    selected = selector.transform(processed)
+    return pd.DataFrame(selected, columns=expected_feature_names)
 
-def train_models(X_train, X_test, y_train, y_test):
-    """Train and evaluate multiple models with detailed metrics."""
+def compute_business_metrics(y_true, y_pred, y_proba):
+    """Compute F2, ROC-AUC, and PR-AUC metrics."""
+    try:
+        f2 = fbeta_score(y_true, y_pred, beta=2)
+    except Exception:
+        f2 = None
+    try:
+        roc = roc_auc_score(y_true, y_proba)
+    except Exception:
+        roc = None
+    try:
+        pr_auc = average_precision_score(y_true, y_proba)
+    except Exception:
+        pr_auc = None
+    return {'f2': f2, 'roc_auc': roc, 'pr_auc': pr_auc}
+
+
+def find_best_threshold(y_true, y_proba, beta=2):
+    """Find probability threshold that maximizes F-beta."""
+    thresholds = np.linspace(0.1, 0.9, 17)
+    best_t = 0.5
+    best_score = -1
+    for t in thresholds:
+        preds = (y_proba >= t).astype(int)
+        try:
+            score = fbeta_score(y_true, preds, beta=beta)
+        except Exception:
+            score = -1
+        if score > best_score:
+            best_score = score
+            best_t = t
+    return best_t, best_score
+
+def train_models(X_train, X_test, y_train, y_test, cv=3, randomized=False, best_only=False, random_state=42, use_smote_in_cv=False, calibrate=True):
+    """Train and evaluate multiple models with options for CV, randomized search, SMOTE-in-CV, and calibration."""
     print("\n3. Training and evaluating models...")
-    
-    # Define parameter grids for each model
+
     param_grids = {
         'Logistic Regression': {
-            'C': [0.001, 0.01, 0.1, 1, 10, 100],
-            'penalty': ['l2'],  # Removed 'l1' as it's not supported by 'lbfgs'
-            'solver': ['lbfgs']  # Explicitly specify the solver
+            'C': [0.01, 0.1, 1, 10],
+            'penalty': ['l2'],
+            'solver': ['lbfgs']
         },
         'Random Forest': {
             'n_estimators': [100, 200],
-            'max_depth': [10, 20, None],
+            'max_depth': [10, None],
             'min_samples_split': [2, 5]
         },
         'XGBoost': {
@@ -615,116 +769,143 @@ def train_models(X_train, X_test, y_train, y_test):
         'SVM': {
             'C': [0.1, 1, 10],
             'kernel': ['linear'],
-            'gamma': ['scale', 'auto']
+            'gamma': ['scale']
         },
         'Gradient Boosting': {
-            'n_estimators': [100, 200],
-            'learning_rate': [0.1, 0.01],
-            'max_depth': [3, 5]
+            'n_estimators': [100],
+            'learning_rate': [0.1],
+            'max_depth': [3]
         },
         'AdaBoost': {
             'n_estimators': [50, 100],
-            'learning_rate': [1.0, 0.5, 1.0]
+            'learning_rate': [1.0, 0.5]
         },
         'Neural Network': {
-            'hidden_layer_sizes': [(50,), (100,), (50, 50)],
-            'activation': ['relu', 'tanh'],
-            'solver': ['adam', 'sgd']
+            'hidden_layer_sizes': [(50,), (100,)],
+            'activation': ['relu'],
+            'solver': ['adam']
         },
         'Ridge Classifier': {
             'alpha': [0.1, 1, 10],
-            'solver': ['auto', 'svd', 'cholesky']
+            'solver': ['auto']
         },
-        'Naive Bayes': {},  # No hyperparameters for GaussianNB
-        'KNN': {
-            'n_neighbors': [3, 5, 7],
-            'weights': ['uniform', 'distance']
-        },
-        'Decision Tree': {
-            'max_depth': [None, 10, 20],
-            'min_samples_split': [2, 5],
-            'min_samples_leaf': [1, 2]
-        }
+        'Naive Bayes': {}
     }
-    
-    # Initialize models
-    models = {
-        'Logistic Regression': LogisticRegression(max_iter=1000),
-        'Ridge Classifier': RidgeClassifier(),
+
+    base_models = {
+        'Logistic Regression': LogisticRegression(max_iter=1000, random_state=random_state),
+        'Ridge Classifier': RidgeClassifier(random_state=random_state),
         'Naive Bayes': GaussianNB(),
-        'SVM': SVC(probability=True),
-        'KNN': KNeighborsClassifier(),
-        'Decision Tree': DecisionTreeClassifier(random_state=42),
-        'Random Forest': RandomForestClassifier(random_state=42),
-        'XGBoost': XGBClassifier(random_state=42),
-        'Gradient Boosting': GradientBoostingClassifier(random_state=42),
-        'AdaBoost': AdaBoostClassifier(random_state=42),
-        'Neural Network': MLPClassifier(max_iter=2000, random_state=42, solver='adam', learning_rate='adaptive')
+        'SVM': SVC(probability=True, random_state=random_state),
+        'Random Forest': RandomForestClassifier(random_state=random_state),
+        'XGBoost': XGBClassifier(random_state=random_state),
+        'Gradient Boosting': GradientBoostingClassifier(random_state=random_state),
+        'AdaBoost': AdaBoostClassifier(random_state=random_state),
+        'Neural Network': MLPClassifier(max_iter=2000, random_state=random_state, solver='adam', learning_rate='adaptive')
     }
-    
-    # Dictionary to store results
+
+    if best_only:
+        model_names = ['Logistic Regression', 'Random Forest']
+    else:
+        model_names = list(base_models.keys())
+
     model_results = {}
     trained_models = {}
-    
-    # Train and evaluate each model
-    for model_name, model in models.items():
+
+    skf = StratifiedKFold(n_splits=cv, shuffle=True, random_state=random_state)
+
+    for model_name in model_names:
+        model = base_models[model_name]
         print(f"\nTraining {model_name}... This may take some time.")
         start_time = time.time()
-        
         try:
-            # Perform grid search
-            grid_search = GridSearchCV(
-                model, 
-                param_grids[model_name], 
-                cv=5, 
-                scoring='recall', 
-                n_jobs=-1
-            )
-            grid_search.fit(X_train, y_train)
-            
-            # Get best model and predictions
-            best_model = grid_search.best_estimator_
-            trained_models[model_name] = best_model 
+            if model_name == 'Naive Bayes' or (model_name not in param_grids) or (len(param_grids[model_name]) == 0):
+                if use_smote_in_cv:
+                    pipe = ImbPipeline(steps=[('smote', SMOTE(random_state=random_state)), ('clf', model)])
+                    pipe.fit(X_train, y_train)
+                    best_model = pipe
+                    best_params = {}
+                    best_cv_score = None
+                else:
+                    model.fit(X_train, y_train)
+                    best_model = model
+                    best_params = {}
+                    best_cv_score = None
+            else:
+                estimator = ImbPipeline(steps=[('smote', SMOTE(random_state=random_state)), ('clf', model)]) if use_smote_in_cv else model
+                if randomized:
+                    from sklearn.model_selection import RandomizedSearchCV
+                    search = RandomizedSearchCV(
+                        estimator,
+                        param_distributions={f"clf__{k}": v for k, v in param_grids[model_name].items()} if use_smote_in_cv else param_grids[model_name],
+                        n_iter=10,
+                        cv=skf,
+                        scoring='recall',
+                        n_jobs=-1,
+                        random_state=random_state
+                    )
+                else:
+                    search = GridSearchCV(
+                        estimator,
+                        param_grid={f"clf__{k}": v for k, v in param_grids[model_name].items()} if use_smote_in_cv else param_grids[model_name],
+                        cv=skf,
+                        scoring='recall',
+                        n_jobs=-1
+                    )
+                search.fit(X_train, y_train)
+                best_model = search.best_estimator_
+                best_params = search.best_params_
+                best_cv_score = getattr(search, 'best_score_', None)
+
+            # Optional calibration
+            if calibrate and hasattr(best_model, 'predict_proba'):
+                try:
+                    cal = CalibratedClassifierCV(best_model, method='sigmoid', cv=3)
+                    cal.fit(X_train, y_train)
+                    best_model = cal
+                except Exception:
+                    pass
 
             predictions = best_model.predict(X_test)
-            
-            # Calculate metrics
+            # If decision thresholding is needed, predictions could be overridden via tuned threshold using proba
+            y_proba = best_model.predict_proba(X_test)[:, 1] if hasattr(best_model, 'predict_proba') else None
+
             accuracy = accuracy_score(y_test, predictions)
             precision = precision_score(y_test, predictions)
             recall = recall_score(y_test, predictions)
             false_positives = sum((predictions == 1) & (y_test == 0))
             confusion = confusion_matrix(y_test, predictions)
             report = classification_report(y_test, predictions)
-            
-            # Store results
+            biz = compute_business_metrics(y_test, predictions, y_proba) if y_proba is not None else {'f2': None, 'roc_auc': None, 'pr_auc': None}
+
             model_results[model_name] = {
                 'accuracy': accuracy,
                 'precision': precision,
                 'recall': recall,
                 'false_positives': false_positives,
                 'confusion_matrix': confusion,
-                'best_params': grid_search.best_params_,
-                'report': report
+                'best_params': best_params,
+                'report': report,
+                'cv_score': best_cv_score,
+                'f2': biz['f2'],
+                'roc_auc': biz['roc_auc'],
+                'pr_auc': biz['pr_auc']
             }
-            
-            # Print results
-            print(f"Best parameters: {grid_search.best_params_}")
-            print(f"Best cross-validation score: {grid_search.best_score_:.4f}")
+            trained_models[model_name] = best_model
+
             print(f"Test accuracy: {accuracy:.4f}")
             print(f"Precision: {precision:.4f}")
             print(f"Recall: {recall:.4f}")
-            print(f"False Positives: {false_positives}")
             print(f"Training time: {time.time() - start_time:.2f} seconds")
-            
         except Exception as e:
             logging.error(f"Error training {model_name}: {str(e)}")
             print(f"Error training {model_name}. Check error_log.txt for details.")
             continue
-    
+
     return model_results, trained_models
 
 def create_ensemble(X_train, X_test, y_train, y_test, model_results, models):
-    """Create and evaluate an ensemble of the top 3 models."""
+    """Create and evaluate an ensemble of the top 3 models and return the fitted model."""
     print("\n4. Creating ensemble model...")
     try:
         # Get top 3 models
@@ -761,7 +942,8 @@ def create_ensemble(X_train, X_test, y_train, y_test, model_results, models):
         print("\nClassification Report:")
         print(ensemble_report)
         
-        return ensemble_accuracy, ensemble_report
+        # Return fitted model along with metrics
+        return ensemble, ensemble_accuracy, ensemble_report
     except Exception as e:
         logging.error(f"Error creating ensemble: {str(e)}")
         raise
@@ -873,6 +1055,37 @@ def save_results(model_results, ensemble_accuracy, ensemble_report, results_dir)
         print(f"Error saving results. Check error_log.txt for details.")
         raise
 
+def save_full_pipeline(preprocessor, selector, model, threshold, expected_columns=None, path='ml_results/final_pipeline.joblib'):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    artifact = {
+        'preprocessor': preprocessor,
+        'selector': selector,
+        'model': model,
+        'threshold': threshold,
+        'expected_columns': expected_columns
+    }
+    joblib.dump(artifact, path)
+    print(f"Full pipeline saved to {path}")
+
+
+def export_model_results(model_results, csv_path='ml_results/model_results.csv', json_path='ml_results/model_results.json'):
+    os.makedirs(os.path.dirname(csv_path), exist_ok=True)
+    # Flatten for DataFrame
+    rows = []
+    for name, res in model_results.items():
+        row = {'model': name}
+        for k, v in res.items():
+            if k == 'confusion_matrix':
+                row[k] = np.array(v).tolist()
+            else:
+                row[k] = v
+        rows.append(row)
+    df = pd.DataFrame(rows)
+    df.to_csv(csv_path, index=False)
+    with open(json_path, 'w') as f:
+        json.dump(rows, f, indent=2)
+    print(f"Model results exported to {csv_path} and {json_path}")
+
 
 def main():
     """Main function to run the analysis."""
@@ -930,7 +1143,7 @@ def main():
         internet_service_senior(df, vis_dir)
 
         # Prepare features
-        X_train, X_test, y_train, y_test, selected_feature_names = prepare_features(df)
+        X_train, X_test, y_train, y_test, selected_feature_names, preprocessor, selector, X_train_selected_df_pre_smote, y_train_pre = prepare_features(df)
         print("Selected features:", selected_feature_names)
 
 
@@ -941,7 +1154,7 @@ def main():
         save_models(trained_models)
 
         # Create ensemble from the trained models (use trained_models, not new instances)
-        ensemble_accuracy, ensemble_report = create_ensemble(
+        ensemble_model, ensemble_accuracy, ensemble_report = create_ensemble(
             X_train, X_test, y_train, y_test, model_results, trained_models
         )
 
@@ -979,3 +1192,21 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+def load_full_pipeline(path='ml_results/final_pipeline.joblib'):
+    if os.path.exists(path):
+        return joblib.load(path)
+    raise FileNotFoundError(f"Pipeline artifact not found at {path}")
+
+
+def top_permutation_importances(model, X, y, feature_names, n_repeats=5, top_k=3, random_state=42):
+    """Compute permutation importances and return top_k as list of (feature, importance)."""
+    try:
+        result = permutation_importance(model, X, y, n_repeats=n_repeats, random_state=random_state, scoring='neg_log_loss')
+        importances = result.importances_mean
+        pairs = sorted(zip(feature_names, importances), key=lambda t: t[1], reverse=True)
+        return pairs[:top_k]
+    except Exception as e:
+        logging.error(f"Error computing permutation importance: {str(e)}")
+        return []

@@ -129,3 +129,29 @@ This project is open source and available under the MIT License.
 ## Contact
 
 For questions or feedback, feel free to reach out at [your-email@example.com].
+
+## Quick Demo (Load-only Mode)
+
+1. Train once with your dataset and let the app save `ml_results/final_pipeline.joblib`.
+2. Next runs: check "Load saved pipeline (skip training)" in the sidebar to start instantly.
+
+## Docker (optional)
+
+Create `Dockerfile` like:
+
+```Dockerfile
+# Simple Streamlit runtime
+FROM python:3.9-slim
+WORKDIR /app
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
+EXPOSE 8501
+CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0", "--server.port=8501"]
+```
+
+Build and run:
+```bash
+docker build -t churn-app .
+docker run -p 8501:8501 churn-app
+```

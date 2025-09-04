@@ -1,0 +1,19 @@
+model,accuracy,precision,recall,false_positives,confusion_matrix,best_params,report,cv_score,f2,roc_auc,pr_auc
+Logistic Regression,0.7416607523066004,0.5087108013937283,0.7807486631016043,282,"[[753, 282], [82, 292]]","{'clf__solver': 'lbfgs', 'clf__penalty': 'l2', 'clf__C': 1}","              precision    recall  f1-score   support
+
+           0       0.90      0.73      0.81      1035
+           1       0.51      0.78      0.62       374
+
+    accuracy                           0.74      1409
+   macro avg       0.71      0.75      0.71      1409
+weighted avg       0.80      0.74      0.76      1409
+",0.7924630324431693,0.7053140096618358,0.8408522565811567,0.6571969079122904
+Random Forest,0.7629524485450674,0.5403225806451613,0.7165775401069518,228,"[[807, 228], [106, 268]]","{'clf__n_estimators': 200, 'clf__min_samples_split': 2, 'clf__max_depth': 10}","              precision    recall  f1-score   support
+
+           0       0.88      0.78      0.83      1035
+           1       0.54      0.72      0.62       374
+
+    accuracy                           0.76      1409
+   macro avg       0.71      0.75      0.72      1409
+weighted avg       0.79      0.76      0.77      1409
+",0.8639805852452067,0.6726907630522089,0.833794466403162,0.6425475491389597
