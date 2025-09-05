@@ -166,85 +166,96 @@ if uploaded_file:
     # Threshold slider (global)
     with tab_single:
         st.subheader("📊 Predict Single Customer Churn")
-        threshold = st.slider("Decision threshold", min_value=0.1, max_value=0.9, value=float(best_t if 'best_t' in locals() else 0.5), step=0.01)
+        threshold = best_t if 'best_t' in locals() else 0.5  # use best threshold if available
+        st.info(f"Using decision threshold: {threshold:.2f}")
 
-        # Optional: pick an existing customer to autofill
-        if 'customerID' in df.columns:
-            cust_ids = df['customerID'].astype(str).unique().tolist()
-            selected_id = st.selectbox("Select existing customerID (optional)", options=["--"] + cust_ids, index=0)
-        else:
-            selected_id = "--"
+    # Optional: use a single selectbox to pick an existing customer to autofill, with a unique key
+    if 'customerID' in df.columns:
+        cust_ids = df['customerID'].astype(str).unique().tolist()
+        selected_id = st.selectbox("Select existing customerID (optional)", options=["--"] + cust_ids, index=0, key="select_customer")
+    else:
+        selected_id = "--"
 
-        input_data = {}
-        raw_cols = [c for c in df.columns if c not in ["Churn"]]
-        cols1, cols2 = st.columns(2)
+    input_data = {}  # Always initialize input_data here
 
-        # If selected ID, prefill values
-        prefill = None
-        if selected_id != "--":
-            prefill = df[df['customerID'].astype(str) == selected_id].iloc[0].to_dict()
+    raw_cols = [c for c in df.columns if c not in ["Churn"]]
+    cols1, cols2 = st.columns(2)
+    prefill = None
+    if selected_id != "--":
+        prefill = df[df['customerID'].astype(str) == selected_id].iloc[0].to_dict()
+    
+    for i, col in enumerate(raw_cols):
+        container = cols1 if i % 2 == 0 else cols2
+        with container:
+            default_val = prefill[col] if prefill and (col in prefill) else (float(df[col].median()) if pd.api.types.is_numeric_dtype(df[col]) else None)
+            if pd.api.types.is_numeric_dtype(df[col]):
+                val = st.number_input(f"{col}", value=float(default_val) if default_val is not None else 0.0, key=f"num_input_{col}")
+            else:
+                options = sorted(df[col].dropna().astype(str).unique().tolist())
+                index = 0
+                if default_val is not None and str(default_val) in options:
+                    index = options.index(str(default_val))
+                val = st.selectbox(f"{col}", options, index=index if options else 0, key=f"sel_{col}")
+            input_data[col] = val
 
-        for i, col in enumerate(raw_cols):
-            container = cols1 if i % 2 == 0 else cols2
-            with container:
-                default_val = prefill[col] if prefill and col in prefill else (float(df[col].median()) if pd.api.types.is_numeric_dtype(df[col]) else None)
-                if pd.api.types.is_numeric_dtype(df[col]):
-                    val = st.number_input(f"{col}", value=float(default_val) if default_val is not None else 0.0)
-                else:
-                    options = sorted(df[col].dropna().astype(str).unique().tolist())
-                    index = 0
-                    if default_val is not None and str(default_val) in options:
-                        index = options.index(str(default_val))
-                    val = st.selectbox(f"{col}", options, index=index if options else 0)
-                input_data[col] = val
-
-        if st.button("🔍 Predict Churn", key="predict_single"):
-            try:
+    if st.button("🔍 Predict Churn", key="predict_single_button"):
+        try:
+            with st.spinner("Making prediction..."):
                 raw_input_df = pd.DataFrame([input_data])
                 transformed_df = transform_new_data(raw_input_df, preprocessor, selector, selected_feature_names)
                 proba = ensemble_model.predict_proba(transformed_df)[:, 1][0]
                 prediction = int(proba >= threshold)
-
-                st.success(f"🎯 Prediction: {'Churn' if prediction == 1 else 'Not Churn'}")
-                st.info(f"🧠 Probability of Churn: {proba:.2f} (threshold={threshold:.2f})")
-
-                # Retention actions panel
-                st.subheader("🎯 Suggested Retention Actions")
-                if proba >= 0.7:
-                    st.write("- Priority outreach with discount or service recovery")
-                    st.write("- Offer bundle with security/backup")
-                    st.write("- If Electronic check: suggest auto-pay/credit card")
-                elif proba >= threshold:
-                    st.write("- Targeted offer (loyalty credit or partial discount)")
-                    st.write("- Check service quality if Fiber optic")
-                    st.write("- Promote longer-term contract benefits")
+            
+            # Determine risk level based on the probability
+            if proba > 0.65:
+                risk_level = "High"
+            elif proba < 0.35:
+                risk_level = "Low"
+            else:
+                risk_level = "Medium"
+            
+            # Display user-friendly prediction results
+            st.success(f"🎯 Prediction: {'Churn' if prediction == 1 else 'No Churn'}")
+            st.info(f"Churn Risk: {risk_level}")
+            st.info(f"Risk Score: {int(proba*100)}%")
+            
+            # Retention actions panel
+            st.subheader("🎯 Suggested Retention Actions")
+            if proba >= 0.7:
+                st.write("- Priority outreach with discount or service recovery")
+                st.write("- Offer bundle with security/backup")
+                st.write("- If Electronic check: suggest auto-pay/credit card")
+            elif proba >= threshold:
+                st.write("- Targeted offer (loyalty credit or partial discount)")
+                st.write("- Check service quality if Fiber optic")
+                st.write("- Promote longer-term contract benefits")
+            else:
+                st.write("- Routine engagement; upsell additional services")
+            
+            # Explanation fallback: Random Forest SHAP or permutation importance
+            try:
+                rf = trained_models.get('Random Forest') if 'trained_models' in locals() else None
+                if rf is not None and hasattr(rf, 'predict_proba'):
+                    sample_X = pd.DataFrame(X_test_selected, columns=selected_feature_names).iloc[:100]
+                    explainer = shap.TreeExplainer(rf)
+                    shap_values = explainer.shap_values(sample_X)
+                    st.caption("Feature importance summary (Random Forest)")
+                    shap.summary_plot(shap_values[1] if isinstance(shap_values, list) else shap_values, sample_X, show=False)
+                    st.pyplot(bbox_inches='tight', dpi=120)
                 else:
-                    st.write("- Routine engagement; upsell additional services")
-
-                # Explanation fallback: Random Forest SHAP or permutation importance
-                try:
-                    rf = trained_models.get('Random Forest') if 'trained_models' in locals() else None
-                    if rf is not None and hasattr(rf, 'predict_proba'):
-                        sample_X = pd.DataFrame(X_test_selected, columns=selected_feature_names).iloc[:100]
-                        explainer = shap.TreeExplainer(rf)
-                        shap_values = explainer.shap_values(sample_X)
-                        st.caption("Feature importance summary (Random Forest)")
-                        shap.summary_plot(shap_values[1] if isinstance(shap_values, list) else shap_values, sample_X, show=False)
-                        st.pyplot(bbox_inches='tight', dpi=120)
-                    else:
-                        expl_pairs = top_permutation_importances(ensemble_model, selected_X_train.iloc[:200], y_train_resampled.iloc[:200], selected_feature_names, top_k=3)
-                        if expl_pairs:
-                            st.caption("Top contributing features (permutation importance on sample):")
-                            for fname, imp in expl_pairs:
-                                st.write(f"- {fname}: {imp:.4f}")
-                except Exception:
-                    pass
-
-                save_prediction_streamlit(input_data, prediction, proba)
-                st.success("✅ Prediction saved successfully.")
-
-            except Exception as e:
-                st.error(f"❌ Error during prediction: {str(e)}")
+                    expl_pairs = top_permutation_importances(ensemble_model, selected_X_train.iloc[:200], y_train_resampled.iloc[:200], selected_feature_names, top_k=3)
+                    if expl_pairs:
+                        st.caption("Top contributing features (permutation importance on sample):")
+                        for fname, imp in expl_pairs:
+                            st.write(f"- {fname}: {imp:.4f}")
+            except Exception:
+                pass
+            
+            # (Optional: Add any explanation graphs or SHAP summary code below)
+            save_prediction_streamlit(input_data, prediction, proba)
+            st.success("✅ Prediction saved successfully.")
+        except Exception as e:
+            st.error(f"❌ Error during prediction: {str(e)}")
 
     # Predict Batch
     with tab_batch:

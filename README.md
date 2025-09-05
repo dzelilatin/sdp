@@ -25,7 +25,7 @@ Dataset source: [Telco Customer Churn Dataset](https://www.kaggle.com/datasets/b
 
 ```
 sdp/
-├── app.py                # Flask application for user interaction
+├── app.py                # Streamlit application for user interaction
 ├── ml_analysis.py        # Machine learning pipeline
 ├── data_analysis.py      # Exploratory data analysis
 ├── visualizations/       # Generated visualization files
@@ -68,7 +68,7 @@ seaborn
 matplotlib
 scikit-learn
 xgboost
-flask
+streamlit
 ```
 
 ## How to Run
@@ -79,10 +79,10 @@ Install the required packages using pip:
 pip install -r requirements.txt
 ```
 
-### **2. Run the Flask Application**
+### **2. Run the Streamlit Application**
 Start the application to interact with the project:
 ```bash
-python app.py
+streamlit run app.py
 ```
 
 ### **3. Upload Dataset**

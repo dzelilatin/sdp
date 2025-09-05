@@ -1,18 +1,18 @@
 [
   {
     "model": "Logistic Regression",
-    "accuracy": 0.7416607523066004,
-    "precision": 0.5087108013937283,
-    "recall": 0.7807486631016043,
-    "false_positives": 282,
+    "accuracy": 0.7366926898509581,
+    "precision": 0.5025041736227045,
+    "recall": 0.8048128342245989,
+    "false_positives": 298,
     "confusion_matrix": [
       [
-        753,
-        282
+        737,
+        298
       ],
       [
-        82,
-        292
+        73,
+        301
       ]
     ],
     "best_params": {
@@ -20,26 +20,26 @@
       "clf__penalty": "l2",
       "clf__C": 1
     },
-    "report": "              precision    recall  f1-score   support\n\n           0       0.90      0.73      0.81      1035\n           1       0.51      0.78      0.62       374\n\n    accuracy                           0.74      1409\n   macro avg       0.71      0.75      0.71      1409\nweighted avg       0.80      0.74      0.76      1409\n",
-    "cv_score": 0.7924630324431693,
-    "f2": 0.7053140096618358,
-    "roc_auc": 0.8408522565811567,
-    "pr_auc": 0.6571969079122904
+    "report": "              precision    recall  f1-score   support\n\n           0       0.91      0.71      0.80      1035\n           1       0.50      0.80      0.62       374\n\n    accuracy                           0.74      1409\n   macro avg       0.71      0.76      0.71      1409\nweighted avg       0.80      0.74      0.75      1409\n",
+    "cv_score": 0.7999537577114272,
+    "f2": 0.7183770883054893,
+    "roc_auc": 0.8417241468392362,
+    "pr_auc": 0.6614768297997928
   },
   {
     "model": "Random Forest",
-    "accuracy": 0.7629524485450674,
-    "precision": 0.5403225806451613,
-    "recall": 0.7165775401069518,
-    "false_positives": 228,
+    "accuracy": 0.7643718949609652,
+    "precision": 0.5428571428571428,
+    "recall": 0.7112299465240641,
+    "false_positives": 224,
     "confusion_matrix": [
       [
-        807,
-        228
+        811,
+        224
       ],
       [
-        106,
-        268
+        108,
+        266
       ]
     ],
     "best_params": {
@@ -47,10 +47,10 @@
       "clf__min_samples_split": 2,
       "clf__max_depth": 10
     },
-    "report": "              precision    recall  f1-score   support\n\n           0       0.88      0.78      0.83      1035\n           1       0.54      0.72      0.62       374\n\n    accuracy                           0.76      1409\n   macro avg       0.71      0.75      0.72      1409\nweighted avg       0.79      0.76      0.77      1409\n",
-    "cv_score": 0.8639805852452067,
-    "f2": 0.6726907630522089,
-    "roc_auc": 0.833794466403162,
-    "pr_auc": 0.6425475491389597
+    "report": "              precision    recall  f1-score   support\n\n           0       0.88      0.78      0.83      1035\n           1       0.54      0.71      0.62       374\n\n    accuracy                           0.76      1409\n   macro avg       0.71      0.75      0.72      1409\nweighted avg       0.79      0.76      0.77      1409\n",
+    "cv_score": 0.8637367622690951,
+    "f2": 0.6696878147029205,
+    "roc_auc": 0.837433155080214,
+    "pr_auc": 0.6493169275629188
   }
 ]
