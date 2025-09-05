@@ -66,6 +66,9 @@ def validate_schema(df):
 
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
+    if 'TotalCharges' in df.columns:
+        df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce').fillna(0)
+    best_t = 0.5
     st.subheader("Raw Uploaded Data (head)")
     st.write(df.head())
 
@@ -265,6 +268,8 @@ if uploaded_file:
         if batch_file is not None:
             try:
                 batch_df = pd.read_csv(batch_file)
+                if 'TotalCharges' in batch_df.columns:
+                    batch_df['TotalCharges'] = pd.to_numeric(batch_df['TotalCharges'], errors='coerce').fillna(0)
                 for col in batch_df.columns:
                     if batch_df[col].dtype == object:
                         batch_df[col] = batch_df[col].astype(str).fillna("Unknown")

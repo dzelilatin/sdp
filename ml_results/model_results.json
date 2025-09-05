@@ -21,10 +21,10 @@
       "clf__C": 1
     },
     "report": "              precision    recall  f1-score   support\n\n           0       0.91      0.71      0.80      1035\n           1       0.50      0.80      0.62       374\n\n    accuracy                           0.74      1409\n   macro avg       0.71      0.76      0.71      1409\nweighted avg       0.80      0.74      0.75      1409\n",
-    "cv_score": 0.7999537577114272,
+    "cv_score": 0.7997122118177074,
     "f2": 0.7183770883054893,
-    "roc_auc": 0.8417241468392362,
-    "pr_auc": 0.6614768297997928
+    "roc_auc": 0.8417990648169676,
+    "pr_auc": 0.6614900055082397
   },
   {
     "model": "Random Forest",
@@ -43,14 +43,14 @@
       ]
     ],
     "best_params": {
-      "clf__n_estimators": 200,
+      "clf__n_estimators": 100,
       "clf__min_samples_split": 2,
       "clf__max_depth": 10
     },
     "report": "              precision    recall  f1-score   support\n\n           0       0.88      0.78      0.83      1035\n           1       0.54      0.71      0.62       374\n\n    accuracy                           0.76      1409\n   macro avg       0.71      0.75      0.72      1409\nweighted avg       0.79      0.76      0.77      1409\n",
-    "cv_score": 0.8637367622690951,
+    "cv_score": 0.8656694797392216,
     "f2": 0.6696878147029205,
-    "roc_auc": 0.837433155080214,
-    "pr_auc": 0.6493169275629188
+    "roc_auc": 0.8368518949081608,
+    "pr_auc": 0.6483105540830701
   }
 ]

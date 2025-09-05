@@ -664,12 +664,41 @@ def prepare_features(df):
         X_train_selected_df_pre_smote = pd.DataFrame(X_train_selected, columns=selected_feature_names)
         y_train_pre = y_train.reset_index(drop=True)
 
-        # Apply SMOTE on selected features to balance classes (legacy path)
+        # Apply SMOTE on selected features to balance classes
         smote = SMOTE(random_state=42)
         X_train_resampled, y_train_resampled = smote.fit_resample(X_train_selected, y_train)
 
         # Convert resampled numpy array back to DataFrame with column names
         X_train_resampled_df = pd.DataFrame(X_train_resampled, columns=selected_feature_names)
+
+        # --- CORRECT PLACEMENT FOR THE VISUALIZATION CODE ---
+        # By placing the code here, y_train_pre and y_train_resampled already exist.
+        print("\nGenerating SMOTE comparison visual...")
+        plt.figure(figsize=(12, 5))
+
+        # Plot Before SMOTE
+        plt.subplot(1, 2, 1)
+        y_train_pre.value_counts().plot(kind='bar', color=['#4169E1', '#E74C3C'])
+        plt.title('Class Distribution Before SMOTE')
+        plt.xlabel('Churn')
+        plt.ylabel('Number of Customers')
+        plt.xticks(ticks=[0, 1], labels=['No Churn', 'Churn'], rotation=0)
+
+        # Plot After SMOTE
+        plt.subplot(1, 2, 2)
+        pd.Series(y_train_resampled).value_counts().plot(kind='bar', color=['#4169E1', '#E74C3C'])
+        plt.title('Class Distribution After SMOTE')
+        plt.xlabel('Churn')
+        plt.ylabel('Number of Customers')
+        plt.xticks(ticks=[0, 1], labels=['No Churn', 'Churn'], rotation=0)
+
+        plt.tight_layout()
+        results_dir = create_results_directory() # Ensure results directory exists
+        smote_visual_path = os.path.join(results_dir, 'smote_comparison.png')
+        plt.savefig(smote_visual_path)
+        print(f"SMOTE comparison visual saved to: {smote_visual_path}")
+        plt.close()
+        # --- End of the new code block ---
 
         return X_train_resampled_df, X_test_selected, y_train_resampled, y_test, selected_feature_names, preprocessor, selector, X_train_selected_df_pre_smote, y_train_pre
 
