@@ -88,6 +88,9 @@ streamlit run app.py
 ### **3. Upload Dataset**
 Upload the Telco Customer Churn dataset (CSV format) through the web interface.
 
+Notes
+The Telco Customer Churn dataset is included in the uploads/ folder. You can upload the dataset directly from this folder through the web interface.
+
 ### **4. View Results**
 - Visualize churn trends and model performance.
 - Download generated plots and results.
