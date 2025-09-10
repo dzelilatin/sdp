@@ -82,3 +82,7 @@
 2025-07-07 23:45:57,598 - ERROR - Error in main execution: [Errno 30] Read-only file system: '/visualizations'
 2025-07-09 15:39:40,747 - ERROR - Error creating ensemble: 'LogisticRegression' object is not subscriptable
 2025-09-04 14:14:54,880 - ERROR - Error preparing features: __init__() got an unexpected keyword argument 'sparse'
+2025-09-05 20:23:24,540 - ERROR - Error saving results: 'confusion_matrix'
+2025-09-05 20:23:24,541 - ERROR - Error in main execution: 'confusion_matrix'
+2025-09-05 20:27:17,083 - ERROR - Error saving results: 'confusion_matrix'
+2025-09-05 20:27:17,084 - ERROR - Error in main execution: 'confusion_matrix'

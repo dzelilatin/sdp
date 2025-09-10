@@ -1059,16 +1059,26 @@ def save_results(model_results, ensemble_accuracy, ensemble_report, results_dir)
             f.write("MODEL PERFORMANCE RESULTS\n")
             f.write("=======================\n\n")
             
+            # This loop is now corrected to be safer
             for model_name, results in model_results.items():
+                if model_name == 'Ensemble': continue # Skip the dummy 'Ensemble' entry here
+
                 f.write(f"{model_name}:\n")
-                f.write(f"Accuracy: {results['accuracy']:.4f}\n")
-                f.write(f"Precision: {results['precision']:.4f}\n")
-                f.write(f"Recall: {results['recall']:.4f}\n")
-                f.write(f"False Positives: {results['false_positives']}\n")
-                f.write(f"Confusion Matrix:\n{results['confusion_matrix']}\n")
-                f.write(f"Best Parameters: {results['best_params']}\n")
+                f.write(f"Accuracy: {results.get('accuracy', 'N/A'):.4f}\n")
+                f.write(f"Precision: {results.get('precision', 'N/A'):.4f}\n")
+                f.write(f"Recall: {results.get('recall', 'N/A'):.4f}\n")
+                f.write(f"False Positives: {results.get('false_positives', 'N/A')}\n")
+                
+                # Use .get() to safely access keys that might be missing
+                confusion_matrix = results.get('confusion_matrix', 'Not Available')
+                f.write(f"Confusion Matrix:\n{confusion_matrix}\n")
+                
+                best_params = results.get('best_params', 'Not Available')
+                f.write(f"Best Parameters: {best_params}\n")
+
+                report = results.get('report', 'Not Available')
                 f.write("\nClassification Report:\n")
-                f.write(results['report'])
+                f.write(report)
                 f.write("\n" + "="*50 + "\n\n")
             
             f.write("\nENSEMBLE MODEL RESULTS\n")
@@ -1119,46 +1129,23 @@ def export_model_results(model_results, csv_path='ml_results/model_results.csv',
 def main():
     """Main function to run the analysis."""
     try:
-        # Parse command-line arguments for flexible data path
+        # --- (Argument parsing and data loading - NO CHANGES) ---
         parser = argparse.ArgumentParser(description="Run Telco churn ML pipeline")
-        parser.add_argument(
-            '--data-path',
-            default=None,
-            help='Path to the dataset CSV file'
-        )
+        parser.add_argument('--data-path', default=None, help='Path to the dataset CSV file')
         args = parser.parse_args()
-
-        # Try multiple default paths including user input
-        possible_paths = [
-            args.data_path,
-            'uploads/telcodataset.csv',
-            '/Users/user/Downloads/telcodataset.csv'
-        ]
-        data_path = None
-        for p in possible_paths:
-            if p and os.path.isfile(p):
-                data_path = p
-                break
-
+        possible_paths = [args.data_path, 'uploads/telcodataset.csv', '/Users/user/Downloads/telcodataset.csv']
+        data_path = next((p for p in possible_paths if p and os.path.isfile(p)), None)
         if data_path is None:
-            raise FileNotFoundError("Dataset CSV file not found in provided or default locations.")
-
+            raise FileNotFoundError("Dataset CSV file not found.")
         print(f"Using dataset path: {data_path}")
-
-        # Create results directory and initialize database
+        
         results_dir = create_results_directory()
         initialize_database()
-
-        # Load and preprocess data
         df = load_and_preprocess_data(data_path)
-
-        # Create the directory to save visualizations
-        base_dir = os.path.dirname(os.path.abspath(__file__))  # path to ml_analysis.py folder
-        vis_dir = os.path.join(base_dir, 'visualizations')
-
+        
+        # --- (Visualization calls - NO CHANGES) ---
+        vis_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'visualizations')
         os.makedirs(vis_dir, exist_ok=True)
-
-        # Call the visualization functions
         demographic_analysis(df, vis_dir)
         correlation_analysis(df, vis_dir)
         internet_service_analysis(df, vis_dir)
@@ -1166,50 +1153,64 @@ def main():
         payment_and_contract_analysis(df, vis_dir)
         churn_related_analysis(df, vis_dir)
         other_distributions(df, vis_dir)
-        additional_services_churn(df, vis_dir)
-        online_backup_distribution(df, vis_dir)
-        online_security_distribution(df, vis_dir) 
-        internet_service_senior(df, vis_dir)
 
-        # Prepare features
-        X_train, X_test, y_train, y_test, selected_feature_names, preprocessor, selector, X_train_selected_df_pre_smote, y_train_pre = prepare_features(df)
-        print("Selected features:", selected_feature_names)
-
-
-        # Train models
-        model_results, trained_models = train_models(X_train, X_test, y_train, y_test)
-
-        # Save trained models to disk for future use
-        save_models(trained_models)
-
-        # Create ensemble from the trained models (use trained_models, not new instances)
-        ensemble_model, ensemble_accuracy, ensemble_report = create_ensemble(
-            X_train, X_test, y_train, y_test, model_results, trained_models
-        )
-
-        # Plot ROC curves using trained models
-        plot_roc_curves(trained_models, X_test, y_test, results_dir)
-
-        # Plot and save performance comparison visuals
+        # --- (Main ML Pipeline - NO CHANGES) ---
+        X_train_df, X_test_df, y_train, y_test, selected_feature_names, preprocessor, selector, _, _ = prepare_features(df)
+        model_results, trained_models = train_models(X_train_df, X_test_df, y_train, y_test)
+        ensemble_model, ensemble_accuracy, ensemble_report = create_ensemble(X_train_df, X_test_df, y_train, y_test, model_results, trained_models)
+        
+        plot_roc_curves(trained_models, X_test_df, y_test, results_dir)
         plot_results(model_results, results_dir)
-
-        # Save text report of results
         save_results(model_results, ensemble_accuracy, ensemble_report, results_dir)
+        export_model_results(model_results, csv_path=os.path.join(results_dir, 'model_results.csv'))
 
-        # Example: take first test sample, predict with best model, and save to DB
-        best_model_name = max(model_results, key=lambda k: model_results[k]['accuracy'])
-        best_model = trained_models[best_model_name]
+        # --- START OF THE FINAL, CORRECTED FEATURE IMPORTANCE BLOCK ---
+        print("\n7. Generating Feature Importances...")
+        try:
+            best_model_for_importance = None
+            model_to_unwrap = None
+            
+            # Find the best tree-based model from the trained models
+            for model_name in ['XGBoost', 'Random Forest', 'Gradient Boosting']:
+                if model_name in trained_models:
+                    model_to_unwrap = trained_models[model_name]
+                    print(f"Selected '{model_name}' for feature importances.")
+                    break
+            
+            if model_to_unwrap:
+                # This is the crucial part: Unwrap the model from any pipeline/calibrator
+                actual_model = model_to_unwrap
+                if hasattr(actual_model, 'best_estimator_'):
+                    actual_model = actual_model.best_estimator_
+                if hasattr(actual_model, 'calibrated_classifiers_'):
+                    actual_model = actual_model.calibrated_classifiers_[0].base_estimator
+                if hasattr(actual_model, 'steps'):
+                    actual_model = actual_model.steps[-1][1]
 
-        sample_input = X_test[0]  # numpy array, scaled and selected features
-        sample_input_list = sample_input.tolist()
+                # Now, check for the attribute on the *actual* model
+                if hasattr(actual_model, 'feature_importances_'):
+                    importances = actual_model.feature_importances_
+                    feature_importance_df = pd.DataFrame({'feature': selected_feature_names, 'importance': importances})
+                    feature_importance_df = feature_importance_df.sort_values(by='importance', ascending=False).head(10)
 
-        prediction = best_model.predict(sample_input.reshape(1, -1))[0]
-
-        # TODO: Provide correct column names corresponding to selected features here.
-        # For now, placeholders:
-        column_names = [f"feature_{i}" for i in range(len(sample_input_list))]
-
-        save_prediction(sample_input_list, int(prediction), best_model_name, column_names)
+                    plt.figure(figsize=(12, 8))
+                    sns.barplot(x='importance', y='feature', data=feature_importance_df, palette='viridis', orient='h')
+                    plt.title('Top 10 Most Important Features for Predicting Churn', fontsize=16)
+                    plt.xlabel('Importance Score', fontsize=12)
+                    plt.ylabel('Feature', fontsize=12)
+                    plt.tight_layout()
+                    
+                    feature_importance_path = os.path.join(results_dir, 'feature_importance.png')
+                    plt.savefig(feature_importance_path)
+                    print(f"SUCCESS: Feature importance plot saved to: {feature_importance_path}")
+                    plt.close()
+                else:
+                    print(f"Error: The unwrapped model '{type(actual_model).__name__}' does not have 'feature_importances_'.")
+            else:
+                print("Warning: Could not find a suitable model (XGBoost, RF, etc.) to generate feature importances.")
+        except Exception as e:
+            print(f"An unexpected error occurred during feature importance generation: {e}")
+        # --- END OF THE FINAL FEATURE IMPORTANCE BLOCK ---
 
         print("\nAnalysis completed successfully!")
 

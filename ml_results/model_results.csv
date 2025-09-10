@@ -1,19 +1,19 @@
 model,accuracy,precision,recall,false_positives,confusion_matrix,best_params,report,cv_score,f2,roc_auc,pr_auc
-Logistic Regression,0.7338537970191625,0.49917081260364843,0.8048128342245989,302,"[[733, 302], [73, 301]]","{'clf__solver': 'lbfgs', 'clf__penalty': 'l2', 'clf__C': 10}","              precision    recall  f1-score   support
+Logistic Regression,0.7366926898509581,0.5025041736227045,0.8048128342245989,298,"[[737, 298], [73, 301]]","{'clf__solver': 'lbfgs', 'clf__penalty': 'l2', 'clf__C': 1}","              precision    recall  f1-score   support
 
            0       0.91      0.71      0.80      1035
            1       0.50      0.80      0.62       374
 
-    accuracy                           0.73      1409
-   macro avg       0.70      0.76      0.71      1409
-weighted avg       0.80      0.73      0.75      1409
-",0.8006787457129546,0.717008099094807,0.8420884032137228,0.661496045215213
-Random Forest,0.7636621717530163,0.5414141414141415,0.7165775401069518,227,"[[808, 227], [106, 268]]","{'clf__n_estimators': 200, 'clf__min_samples_split': 2, 'clf__max_depth': 10}","              precision    recall  f1-score   support
+    accuracy                           0.74      1409
+   macro avg       0.71      0.76      0.71      1409
+weighted avg       0.80      0.74      0.75      1409
+",0.7997122118177074,0.7183770883054893,0.8417938980598827,0.6615687060207868
+Random Forest,0.7672107877927609,0.5463709677419355,0.7245989304812834,225,"[[810, 225], [103, 271]]","{'clf__n_estimators': 100, 'clf__min_samples_split': 2, 'clf__max_depth': 10}","              precision    recall  f1-score   support
 
-           0       0.88      0.78      0.83      1035
-           1       0.54      0.72      0.62       374
+           0       0.89      0.78      0.83      1035
+           1       0.55      0.72      0.62       374
 
-    accuracy                           0.76      1409
-   macro avg       0.71      0.75      0.72      1409
-weighted avg       0.79      0.76      0.77      1409
-",0.863738163550567,0.6730286288297338,0.8375209899506575,0.6508948972120019
+    accuracy                           0.77      1409
+   macro avg       0.72      0.75      0.73      1409
+weighted avg       0.80      0.77      0.78      1409
+",0.868809226037211,0.6802208835341366,0.8376294918494407,0.6475695571334827
