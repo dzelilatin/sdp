@@ -834,7 +834,7 @@ def train_models(X_train, X_test, y_train, y_test, cv=3, randomized=False, best_
     }
 
     if best_only:
-        model_names = ['Logistic Regression', 'Random Forest']
+        model_names = ['Logistic Regression', 'Random Forest','XGBoost']
     else:
         model_names = list(base_models.keys())
 

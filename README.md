@@ -58,6 +58,30 @@ sdp/
 - Fiber optic users show dissatisfaction—improve service quality or pricing.
 - Bundling additional services like security and backups reduces churn.
 
+## Dataset Requirements
+While this application provides a powerful and reusable pipeline, it is specifically configured for the Telco Customer Churn dataset's schema. To use a different dataset, it MUST meet the following requirements.
+
+### **1. Critical Columns**
+
+For the application to run without crashing, the dataset must contain these exact column names:
+- **Churn**: The target variable indicating if a customer left ('Yes' or 'No').
+- **SeniorCitizen**: Used to derive the AgeRange feature.
+- **MonthlyCharges**: Used in feature engineering.
+- **tenure**: Used in feature engineering.
+
+### **2. Important Predictive Features**
+
+For the model to produce meaningful predictions, the dataset should also include the key features it was trained on, such as:
+- **Contract**
+- **InternetService**
+- **PaymentMethod**
+- **OnlineSecurity**
+- **TechSupport**
+
+### **3. Expected Values**
+
+The code expects certain values within the columns (e.g., Churn should contain 'Yes'/'No'). Using different values (e.g., 1/0 or TRUE/FALSE) would require modifications to the data preprocessing steps in ml_analysis.py.
+
 ## Requirements
 
 To run this project, you need the following Python packages:

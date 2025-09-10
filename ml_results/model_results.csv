@@ -1,19 +1,28 @@
 model,accuracy,precision,recall,false_positives,confusion_matrix,best_params,report,cv_score,f2,roc_auc,pr_auc
-Logistic Regression,0.7366926898509581,0.5025041736227045,0.8048128342245989,298,"[[737, 298], [73, 301]]","{'clf__solver': 'lbfgs', 'clf__penalty': 'l2', 'clf__C': 1}","              precision    recall  f1-score   support
+Logistic Regression,0.7395315826827538,0.5060869565217392,0.7780748663101604,284,"[[751, 284], [83, 291]]","{'clf__solver': 'lbfgs', 'clf__penalty': 'l2', 'clf__C': 10}","              precision    recall  f1-score   support
 
-           0       0.91      0.71      0.80      1035
-           1       0.50      0.80      0.62       374
+           0       0.90      0.73      0.80      1035
+           1       0.51      0.78      0.61       374
 
     accuracy                           0.74      1409
-   macro avg       0.71      0.76      0.71      1409
+   macro avg       0.70      0.75      0.71      1409
 weighted avg       0.80      0.74      0.75      1409
-",0.7997122118177074,0.7183770883054893,0.8417938980598827,0.6615687060207868
-Random Forest,0.7672107877927609,0.5463709677419355,0.7245989304812834,225,"[[810, 225], [103, 271]]","{'clf__n_estimators': 100, 'clf__min_samples_split': 2, 'clf__max_depth': 10}","              precision    recall  f1-score   support
+",0.7898053269715155,0.7025591501690005,0.8412010126843887,0.6596941700111584
+Random Forest,0.7700496806245565,0.5510204081632653,0.7219251336898396,220,"[[815, 220], [104, 270]]","{'clf__n_estimators': 100, 'clf__min_samples_split': 2, 'clf__max_depth': 10}","              precision    recall  f1-score   support
 
-           0       0.89      0.78      0.83      1035
+           0       0.89      0.79      0.83      1035
            1       0.55      0.72      0.62       374
 
     accuracy                           0.77      1409
    macro avg       0.72      0.75      0.73      1409
 weighted avg       0.80      0.77      0.78      1409
-",0.868809226037211,0.6802208835341366,0.8376294918494407,0.6475695571334827
+",0.8656698300595895,0.6797583081570997,0.837332403317058,0.6476511910508913
+XGBoost,0.7700496806245565,0.5525210084033614,0.7032085561497327,213,"[[822, 213], [111, 263]]","{'clf__n_estimators': 200, 'clf__max_depth': 5, 'clf__learning_rate': 0.1}","              precision    recall  f1-score   support
+
+           0       0.88      0.79      0.84      1035
+           1       0.55      0.70      0.62       374
+
+    accuracy                           0.77      1409
+   macro avg       0.72      0.75      0.73      1409
+weighted avg       0.79      0.77      0.78      1409
+",0.861561097623777,0.6668356997971603,0.8292335115864526,0.641196567220283

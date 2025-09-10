@@ -44,14 +44,29 @@ st.title("📉 Customer Churn Prediction Dashboard")
 # Sidebar: training controls
 with st.sidebar:
     st.header("Training Controls")
+    
     use_saved = st.checkbox("Load saved pipeline (skip training)", value=False)
+    st.caption("Check this to quickly make predictions using the last saved model.")
+
     pipeline_path = st.text_input("Pipeline path", value="ml_results/final_pipeline.joblib")
+    
     cv = st.number_input("Cross-validation folds", min_value=2, max_value=10, value=3)
+    st.caption("Number of rounds for model validation. Higher is more robust but slower.")
+
     randomized = st.checkbox("Use RandomizedSearchCV", value=True)
+    st.caption("Check for faster training by testing random settings. Uncheck for a slower but more thorough search.")
+
     best_only = st.checkbox("Train best models only (faster)", value=True)
+    st.caption("Check to train only a small subset of the fastest models. Uncheck to compare all model types.")
+
     use_smote_in_cv = st.checkbox("Use SMOTE inside CV", value=True)
+    st.caption("Recommended. Helps prevent model bias by balancing the 'Churn' vs 'No Churn' data.")
+
     calibrate = st.checkbox("Calibrate probabilities", value=True)
+    st.caption("Recommended. Makes the 'Risk Score' percentage more reliable.")
+
     overwrite_after_train = st.checkbox("Re-train and overwrite saved pipeline", value=True)
+    st.caption("Check to save the newly trained model, overwriting the old one.")
 
 uploaded_file = st.file_uploader("Upload your customer data CSV file", type=["csv"], key="upload")
 
@@ -171,6 +186,7 @@ if uploaded_file:
         st.subheader("📊 Predict Single Customer Churn")
         threshold = best_t if 'best_t' in locals() else 0.5  # use best threshold if available
         st.info(f"Using decision threshold: {threshold:.2f}")
+        st.caption("A lower threshold makes the model more sensitive to potential churners. It will flag customers as 'Churn' even if it has a smaller suspicion (e.g., >25% risk).")
 
         # Optional: use a single selectbox to pick an existing customer to autofill, with a unique key
         if 'customerID' in df.columns:
@@ -224,16 +240,22 @@ if uploaded_file:
                 
                 # Retention actions panel
                 st.subheader("🎯 Suggested Retention Actions")
-                if proba >= 0.7:
-                    st.write("- Priority outreach with discount or service recovery")
-                    st.write("- Offer bundle with security/backup")
-                    st.write("- If Electronic check: suggest auto-pay/credit card")
-                elif proba >= threshold:
-                    st.write("- Targeted offer (loyalty credit or partial discount)")
-                    st.write("- Check service quality if Fiber optic")
-                    st.write("- Promote longer-term contract benefits")
-                else:
-                    st.write("- Routine engagement; upsell additional services")
+                if risk_level == "High":
+                    st.error("High Churn Risk: Immediate Action Recommended")
+                    st.write("- **Priority Outreach:** Contact the customer within 24 hours to understand their dissatisfaction.")
+                    st.write("- **Offer a Significant Discount:** Propose a 1-2 month service credit or a significant discount on their plan.")
+                    st.write("- **Service Upgrade:** If they use Fiber Optic, check for service issues. Offer a free speed upgrade or a more stable plan.")
+                    st.write("- **Switch Payment Method:** If they use Electronic Check, strongly encourage switching to a credit card or auto-pay for a small bonus.")
+                elif risk_level == "Medium":
+                    st.warning("Medium Churn Risk: Proactive Engagement Needed")
+                    st.write("- **Targeted Offer:** Send a proactive email with a loyalty credit or a small discount on an add-on service.")
+                    st.write("- **Promote Contract Benefits:** If they are on a month-to-month contract, highlight the savings of a one or two-year contract.")
+                    st.write("- **Value-Added Services:** Offer a free trial of a service they don't have, like Online Security or Device Protection.")
+                else: # Low Risk
+                    st.success("Low Churn Risk: Focus on Engagement and Upselling")
+                    st.write("- **Routine Engagement:** No immediate action needed. Include in standard customer newsletters.")
+                    st.write("- **Upsell Opportunity:** Suggest relevant additional services they might benefit from, like Streaming TV or Online Backup.")
+                    st.write("- **Referral Program:** Encourage them to refer friends for a mutual benefit, strengthening their loyalty.")
                 
                 # Explanation fallback: Random Forest SHAP or permutation importance
                 try:
@@ -306,29 +328,60 @@ if uploaded_file:
                 st.error(f"❌ Error in batch scoring: {str(e)}")
 
     # History
+    # In app.py, replace your entire "with tab_history:" block with this
+
     with tab_history:
         st.subheader("🗂️ Prediction History")
+        st.info("This table shows a log of all past predictions. Note that the format may vary for older entries.")
+
         try:
             rows = get_prediction_history()
             if rows:
-                cols5 = ["id", "input_data", "prediction", "model_name", "timestamp"]
+                # --- DATA LOADING AND CLEANING ---
                 cols6 = ["id", "input_data", "prediction", "model_name", "proba", "timestamp"]
-                hist_df = pd.DataFrame(rows, columns=cols6 if len(rows[0]) == 6 else cols5)
-                # Parse input_data JSON
-                try:
-                    parsed = hist_df['input_data'].apply(lambda x: pd.Series(json.loads(x)))
-                    hist_df = pd.concat([hist_df.drop(columns=['input_data']), parsed], axis=1)
-                except Exception:
-                    pass
-                # Filters
+                hist_df = pd.DataFrame(rows, columns=cols6)
+
+                # --- ROBUST JSON PARSING LOGIC ---
+                def safe_parse(data):
+                    try:
+                        return json.loads(data)
+                    except (json.JSONDecodeError, TypeError):
+                        return {}
+                parsed_df = pd.DataFrame([safe_parse(x) for x in hist_df['input_data']])
+                hist_df = pd.concat([hist_df.drop(columns=['input_data']), parsed_df], axis=1)
+
+                # --- CRITICAL FIX: ENSURE CORRECT DATA TYPES ---
+                # Convert 'prediction' to a nullable integer type to handle potential missing values
+                if 'prediction' in hist_df.columns:
+                    hist_df['prediction'] = pd.to_numeric(hist_df['prediction'], errors='coerce').astype('Int64')
+
+                # --- FILTERS ---
                 with st.expander("Filters"):
                     pred_filter = st.selectbox("Prediction filter", ["All", "Churn", "Not Churn"], index=0)
-                    if pred_filter != "All":
-                        hist_df = hist_df[hist_df['prediction'] == (1 if pred_filter == "Churn" else 0)]
-                    search = st.text_input("Search text in any column")
-                    if search:
-                        hist_df = hist_df[hist_df.apply(lambda row: row.astype(str).str.contains(search, case=False, na=False).any(), axis=1)]
-                st.dataframe(hist_df.tail(200))
+                    search_query = st.text_input("Search text in any column")
+
+                # Apply filters to a copy of the dataframe
+                filtered_df = hist_df.copy()
+
+                # Apply prediction filter
+                if pred_filter != "All":
+                    if 'prediction' in filtered_df.columns:
+                        filter_value = 1 if pred_filter == "Churn" else 0
+                        # Drop rows where prediction is missing before filtering
+                        filtered_df = filtered_df.dropna(subset=['prediction'])
+                        filtered_df = filtered_df[filtered_df['prediction'] == filter_value]
+
+                # Apply search filter
+                if search_query:
+                    # Fill missing values with empty strings for searching
+                    df_for_search = filtered_df.fillna('').astype(str)
+                    # The search logic is now more reliable
+                    mask = df_for_search.apply(lambda row: row.str.contains(search_query, case=False, na=False).any(), axis=1)
+                    filtered_df = filtered_df[mask]
+                
+                # Display the filtered dataframe
+                st.dataframe(filtered_df.tail(200))
+
             else:
                 st.info("No predictions saved yet.")
         except Exception as e:
@@ -338,15 +391,25 @@ if uploaded_file:
     with tab_admin:
         st.subheader("🛠️ Admin: Training Results & Insights")
         if 'ensemble_accuracy' in locals() and not np.isnan(ensemble_accuracy):
-            st.write(f"Ensemble accuracy: {ensemble_accuracy:.4f}")
+            st.write(f"Ensemble accuracy: {ensemble_accuracy:.2%}")
+            st.caption("This shows the overall accuracy of the final combined model on the test data. It represents the percentage of customers (both churners and non-churners) that the model predicted correctly.")
         try:
             proba_test = ensemble_model.predict_proba(X_test_selected)[:, 1]
             best_t, best_t_score = find_best_threshold(y_test, proba_test, beta=2)
-            st.write(f"Best F2 threshold: {best_t:.2f} (score={best_t_score if best_t_score is not None else 'n/a'})")
+            st.write(f"Best F2 threshold: {best_t:.2f} (F2-Score = {best_t_score:.2f})")
+            st.caption("The F2-Score is a metric that prioritizes finding real churners (minimizing false negatives). This is the optimal decision threshold (e.g., 25%) that maximizes this score, making it the best setting for this business problem.")
         except Exception:
             pass
 
         st.subheader("📈 Model Performance Plots")
+        st.info(
+            """
+            These plots compare the performance of all the models trained during the session.
+            - **ROC Curves** show how well each model can distinguish between churners and non-churners (a curve closer to the top-left is better).
+            - The **Model Accuracy Comparison** bar chart provides a direct ranking of the models based on their overall accuracy.
+            - The **Model Metrics Comparison** line chart shows the trade-off between Precision (how many churn predictions are correct) and Recall (how many actual churners were found).
+            """
+        )
         try:
             plot_roc_curves(trained_models if 'trained_models' in locals() else {}, X_test_selected, y_test, results_dir="ml_results")
             st.image("ml_results/roc_curves.png")
@@ -356,12 +419,20 @@ if uploaded_file:
         try:
             if 'model_results' in locals() and model_results:
                 plot_results(model_results, results_dir="ml_results")
-                st.image("ml_results/model_accuracy_comparison.png")
-                st.image("ml_results/model_metrics_comparison.png")
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.image("ml_results/model_accuracy_comparison.png")
+                with col2:
+                    st.image("ml_results/model_metrics_comparison.png")
         except Exception:
             pass
 
         st.subheader("🧩 SHAP Explanations")
+        st.info(
+            "SHAP (SHapley Additive exPlanations) is a state-of-the-art method for explaining the output of any machine learning model. "
+            "The plot below shows a **global summary**, revealing which features have the biggest impact on predicting churn across the entire dataset. "
+            "Features at the top are the most influential."
+        )
         try:
             # Model selector for SHAP
             choices = []
@@ -395,6 +466,11 @@ if uploaded_file:
             st.info("SHAP could not be displayed for the current model.")
 
         st.subheader("⚖️ Fairness Metrics")
+        st.info(
+            "This section is crucial for ensuring the model is fair and ethical. It checks if the model's predictions are biased towards any particular demographic group. "
+            "The tables below show the **churn rate** and **average churn probability** for different groups (e.g., by gender or senior citizen status). "
+            "Ideally, these rates should be roughly similar across all groups, indicating that the model is not unfairly penalizing anyone."
+        )
         try:
             # Build a small DataFrame for fairness slices from original df and X_test_selected index alignment may not exist
             # So compute on full df using model via transform
@@ -412,6 +488,10 @@ if uploaded_file:
                         'churn_rate': g['pred'].mean(),
                         'avg_proba': g['proba'].mean(),
                     }))
-                    st.dataframe(grp)
+                    st.dataframe(grp.style.format({
+                        'count': '{:,.0f}',
+                        'churn_rate': '{:.2%}',
+                        'avg_proba': '{:.2%}'
+                    }))
         except Exception:
             pass
